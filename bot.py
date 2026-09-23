@@ -27,6 +27,7 @@ import database as db
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://example.com")
+CHANNEL_ID = os.getenv("CHANNEL_ID", "")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("echo-bot")
@@ -78,6 +79,19 @@ async def _send_message_with_photo(bot: Bot, chat_id: int, text: str, media_url:
     else:
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
 
+
+async def _delete_channel_media(bot: Bot, reminder: dict) -> None:
+    """Best-effort removal of a reminder's stored photo from the storage channel; never raises.
+    Mirrors api.py's cleanup, needed here too since a reminder can be deleted directly
+    (auto-delete after sending, or the "Done" button) without going through the API."""
+    message_id = reminder.get("media_message_id")
+    if not message_id or not CHANNEL_ID:
+        return
+    try:
+        await bot.delete_message(chat_id=int(CHANNEL_ID), message_id=message_id)
+    except Exception:
+        logger.warning("Couldn't delete channel message %s", message_id, exc_info=True)
+
 async def send_test_message(bot: Bot, chat_id: int, text: str, media_url: Optional[str] = None, use_message_pool: bool = False, snooze_enabled: bool = False, tracker_enabled: bool = False) -> None:
     message_text = _pick_message(text, use_message_pool)
     keyboard = _reminder_keyboard({"id": 0, "snooze_enabled": snooze_enabled, "tracker_enabled": tracker_enabled})
@@ -118,6 +132,7 @@ async def on_done(callback: CallbackQuery) -> None:
     except Exception: pass
     if is_one_time:
         await db.delete_reminder(reminder_id)
+        await _delete_channel_media(callback.bot, reminder)
 
 def _recurring_reminder_expired(reminder: dict, reference: datetime) -> bool:
     end_date = reminder.get("end_date")
@@ -154,6 +169,7 @@ async def send_reminder(bot: Bot, reminder: dict) -> None:
             await db.mark_reminder_sent(reminder["id"], keep_active=True)
         else:
             await db.delete_reminder(reminder["id"])
+            await _delete_channel_media(bot, reminder)
     except Exception:
         logger.exception("Failed to finalize reminder %s after sending", reminder["id"])
         await db.mark_reminder_sent(reminder["id"], keep_active=False)
@@ -161,7 +177,12 @@ async def send_reminder(bot: Bot, reminder: dict) -> None:
 async def check_due_reminders(bot: Bot) -> None:
     due = await db.get_due_reminders()
     for reminder in due:
-        await send_reminder(bot, reminder)
+        try:
+            await send_reminder(bot, reminder)
+        except Exception:
+            # send_reminder already guards its own internals; this is a last-resort net so one
+            # bad reminder can't stop the rest of the batch from going out on this tick.
+            logger.exception("Unexpected error handling reminder %s", reminder.get("id"))
 
 def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="UTC")
