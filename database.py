@@ -42,7 +42,13 @@ def _row_to_dict(row: Optional[asyncpg.Record]) -> Optional[dict[str, Any]]:
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(DATABASE_URL)
+        _pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=10,
+            command_timeout=15,  # fail fast instead of hanging a request on a stuck query
+            max_inactive_connection_lifetime=300,
+        )
     return _pool
 
 
@@ -62,6 +68,7 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         "recurrence": "ALTER TABLE reminders ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none'",
         "end_date": "ALTER TABLE reminders ADD COLUMN end_date TEXT",
         "use_message_pool": "ALTER TABLE reminders ADD COLUMN use_message_pool INTEGER NOT NULL DEFAULT 0",
+        "media_message_id": "ALTER TABLE reminders ADD COLUMN media_message_id BIGINT",
     }
     for column, ddl in migrations.items():
         if column not in columns:
@@ -114,6 +121,10 @@ async def init_db() -> None:
             """
         )
         await _run_migrations(conn)
+        # Speeds up the scheduler's due-reminder poll and the per-user list/chat endpoints.
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (is_active, is_sent, run_date)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders (user_id, is_active)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_chats_owner ON chats (owner_id)")
 
 
 async def upsert_user(user_id: int, username: Optional[str], first_name: str) -> None:
@@ -166,6 +177,7 @@ async def get_chat(chat_id: int) -> Optional[dict]:
 
 async def create_reminder(
     user_id: int, chat_id: int, text: str, run_date: str, media_url: Optional[str] = None,
+    media_message_id: Optional[int] = None,
     snooze_enabled: bool = False, tracker_enabled: bool = False, recurrence: str = "none",
     end_date: Optional[str] = None, use_message_pool: bool = False,
 ) -> int:
@@ -173,12 +185,12 @@ async def create_reminder(
     new_id = await pool.fetchval(
         """
         INSERT INTO reminders
-            (user_id, chat_id, text, media_url, run_date, recurrence, end_date,
+            (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
              use_message_pool, snooze_enabled, tracker_enabled, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id
         """,
-        user_id, chat_id, text, media_url, run_date, recurrence, end_date,
+        user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
         int(use_message_pool), int(snooze_enabled), int(tracker_enabled),
         utcnow().isoformat(),
     )
@@ -204,7 +216,7 @@ async def update_reminder(reminder_id: int, **fields: Any) -> None:
     if not fields:
         return
     allowed = {
-        "chat_id", "text", "media_url", "run_date", "recurrence", "end_date",
+        "chat_id", "text", "media_url", "media_message_id", "run_date", "recurrence", "end_date",
         "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
@@ -225,11 +237,15 @@ async def delete_reminder(reminder_id: int) -> None:
 
 
 async def get_due_reminders() -> list[dict]:
-    now = utcnow()
+    # Filtering by run_date in SQL (instead of fetching every active reminder and
+    # filtering in Python) keeps each poll cheap as the table grows.
+    now_iso = utcnow().isoformat()
     pool = await get_pool()
-    rows = await pool.fetch("SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0")
-    reminders = [_row_to_dict(r) for r in rows]
-    return [r for r in reminders if parse_iso_utc(r["run_date"]) <= now]
+    rows = await pool.fetch(
+        "SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0 AND run_date <= $1",
+        now_iso,
+    )
+    return [_row_to_dict(r) for r in rows]
 
 
 async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:
