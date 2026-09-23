@@ -48,6 +48,10 @@ async def get_pool() -> asyncpg.Pool:
             max_size=10,
             command_timeout=15,  # fail fast instead of hanging a request on a stuck query
             max_inactive_connection_lifetime=300,
+            # Disables asyncpg's client-side prepared statement cache. Needed for poolers like
+            # PgBouncer (transaction mode) and to avoid InvalidCachedStatementError after schema
+            # changes, at a small cost to per-query performance.
+            statement_cache_size=0,
         )
     return _pool
 
