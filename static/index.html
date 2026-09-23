@@ -370,6 +370,17 @@
   let currentReminderId = null;
   let currentMediaUrl = null;
   let currentMediaMessageId = null;
+  // The media actually persisted in the DB for the reminder currently open (null for a
+  // new reminder). Used to tell an already-saved photo apart from one uploaded during
+  // this unsaved edit session, so we never delete a photo the DB still points to, and
+  // never leave a freshly-uploaded photo orphaned in the storage channel if the user
+  // backs out without saving.
+  let savedMediaUrl = null;
+  let savedMediaMessageId = null;
+  // An old, already-saved photo that was just replaced/cleared in this session. Its
+  // channel post is kept until the save actually succeeds, then deleted.
+  let pendingDeleteUrl = null;
+  let pendingDeleteMessageId = null;
   let currentRecurrence = "none";
   let chatsCache = [];
   let chatsById = new Map();
@@ -524,7 +535,14 @@
   async function clearMedia() {
     const url = currentMediaUrl, messageId = currentMediaMessageId;
     currentMediaUrl = null; currentMediaMessageId = null; renderMediaThumbnails(); markDirty();
-    if (url) { try { await deleteUploadedImage(url, messageId); } catch (e) { console.error(e); } }
+    if (!url) return;
+    if (url === savedMediaUrl) {
+      // Still referenced by the saved reminder - don't delete until the removal is saved.
+      pendingDeleteUrl = url; pendingDeleteMessageId = messageId;
+    } else {
+      // Was uploaded earlier in this same unsaved session - safe to delete right away.
+      try { await deleteUploadedImage(url, messageId); } catch (e) { console.error(e); }
+    }
   }
 
   // Downscales to a max dimension and re-encodes as WebP on a <canvas> before upload
@@ -579,7 +597,14 @@
       currentMediaUrl = media_url; currentMediaMessageId = media_message_id;
       renderMediaThumbnails(); markDirty();
       if (previousUrl) {
-        try { await deleteUploadedImage(previousUrl, previousMessageId); } catch (e) { console.error(e); }
+        if (previousUrl === savedMediaUrl) {
+          // Still referenced by the saved reminder - defer deletion until save succeeds,
+          // so a cancelled edit doesn't leave the saved reminder pointing at a deleted photo.
+          pendingDeleteUrl = previousUrl; pendingDeleteMessageId = previousMessageId;
+        } else {
+          // An earlier unsaved upload from this same session - safe to delete right away.
+          try { await deleteUploadedImage(previousUrl, previousMessageId); } catch (e) { console.error(e); }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -659,6 +684,7 @@
 
   async function openCreateScreen() {
     currentReminderId = null; currentMediaUrl = null; currentMediaMessageId = null; isDirty = true;
+    savedMediaUrl = null; savedMediaMessageId = null; pendingDeleteUrl = null; pendingDeleteMessageId = null;
     editTitle.textContent = "New reminder"; editSubtitle.textContent = "Choose what to say and when to say it.";
     dangerZone.style.display = "none"; trackerSub.textContent = 'Adds a "Done" button and counts a streak';
     fText.value = ""; fPool.checked = false; updatePoolUI();
@@ -675,6 +701,8 @@
   async function openEditScreen(reminder) {
     currentReminderId = reminder.id; currentMediaUrl = reminder.media_url || null;
     currentMediaMessageId = reminder.media_message_id || null; isDirty = false;
+    savedMediaUrl = currentMediaUrl; savedMediaMessageId = currentMediaMessageId;
+    pendingDeleteUrl = null; pendingDeleteMessageId = null;
     editTitle.textContent = "Reminder"; editSubtitle.textContent = `Scheduled for ${formatDateTime(reminder.run_date)}`;
     dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? `Adds a "Done" button · current streak: ${reminder.streak_count}` : 'Adds a "Done" button and counts a streak';
     fText.value = reminder.text; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
@@ -722,7 +750,16 @@
     const savePromise = currentReminderId ? updateReminder(currentReminderId, payload) : createReminder(payload);
     isDirty = false;
     showListScreen();
-    savePromise.then(() => renderList()).catch((e) => {
+    savePromise.then(() => {
+      // Only now is it safe to drop a photo that was replaced/cleared during this edit -
+      // the reminder no longer points at it.
+      if (pendingDeleteUrl) {
+        const url = pendingDeleteUrl, messageId = pendingDeleteMessageId;
+        pendingDeleteUrl = null; pendingDeleteMessageId = null;
+        deleteUploadedImage(url, messageId).catch((e) => console.error(e));
+      }
+      renderList();
+    }).catch((e) => {
       console.error(e); tg?.showAlert("Couldn't save this reminder."); renderList();
     });
   }
@@ -757,9 +794,21 @@
   poolVariantsContainer.addEventListener("input", markDirty);
   [fDate, fTime, fEndDate, fRoute, fSnooze, fTracker].forEach((el) => el.addEventListener("change", markDirty));
 
+  async function handleCancelEdit() {
+    // Leaving the edit screen without saving: any photo uploaded/replaced in this
+    // session that never made it into a saved reminder would otherwise sit orphaned
+    // in the storage channel forever, so clean it up here. A saved reminder's own
+    // photo (pendingDeleteUrl) is left alone, since nothing was actually committed.
+    if (editScreen.style.display === "block" && currentMediaUrl && currentMediaUrl !== savedMediaUrl) {
+      try { await deleteUploadedImage(currentMediaUrl, currentMediaMessageId); } catch (e) { console.error(e); }
+    }
+    pendingDeleteUrl = null; pendingDeleteMessageId = null;
+    showListScreen();
+  }
+
   rowNewReminder.addEventListener("click", openCreateScreen);
   btnDelete.addEventListener("click", handleDelete); btnSendTest.addEventListener("click", handleSendTest);
-  tg?.BackButton.onClick(showListScreen); tg?.MainButton.onClick(saveReminder);
+  tg?.BackButton.onClick(handleCancelEdit); tg?.MainButton.onClick(saveReminder);
 
   renderList();
 </script>
