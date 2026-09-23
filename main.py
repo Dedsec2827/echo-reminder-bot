@@ -7,6 +7,7 @@ main.py
 """
 
 import asyncio
+import logging
 import os
 import uvicorn
 from dotenv import load_dotenv
@@ -43,7 +44,12 @@ async def main() -> None:
     # Даємо FastAPI-застосунку доступ до того самого Bot-інстанса
     fastapi_app.state.bot = bot
 
-    await asyncio.gather(run_bot(bot, dp), run_api())
+    # return_exceptions=True: a crash in the bot polling loop or the API server is logged
+    # instead of silently killing the other half of the process.
+    results = await asyncio.gather(run_bot(bot, dp), run_api(), return_exceptions=True)
+    for result in results:
+        if isinstance(result, Exception):
+            logging.getLogger("echo-main").exception("A service crashed", exc_info=result)
 
 
 if __name__ == "__main__":
