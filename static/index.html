@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Echo</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg:            var(--tg-theme-bg-color, #ffffff);
+    --text:          var(--tg-theme-text-color, #000000);
+    --hint:          var(--tg-theme-hint-color, #999999);
+    --link:          var(--tg-theme-link-color, #2481cc);
+    --button:        var(--tg-theme-button-color, #2481cc);
+    --button-text:   var(--tg-theme-button-text-color, #ffffff);
+    --secondary-bg:  var(--tg-theme-secondary-bg-color, #f0f0f0);
+    --section-bg:    var(--tg-theme-section-bg-color, var(--bg));
+    --destructive:   var(--tg-theme-destructive-text-color, #ff3b30);
+    --divider:       color-mix(in srgb, var(--hint) 25%, transparent);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; margin: 0; background: var(--secondary-bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, textarea, select { font-family: inherit; }
+  svg { display: block; }
+  #app { min-height: 100%; padding-bottom: 56px; }
+
+  /* Header */
+  .page-header { padding: 22px 20px 14px; }
+  .page-header h1 { margin: 12px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+  .page-header .header-sub { margin: 4px 0 0; font-size: 14px; color: var(--hint); line-height: 1.4; }
+  .avatar-circle { width: 52px; height: 52px; border-radius: 50%; background: var(--button); color: var(--button-text); display: flex; align-items: center; justify-content: center; }
+  .avatar-circle svg { width: 26px; height: 26px; }
+  .page-header.detail { text-align: center; padding-top: 24px; }
+  .page-header.detail .avatar-circle { width: 68px; height: 68px; margin: 0 auto; }
+  .page-header.detail .avatar-circle svg { width: 32px; height: 32px; }
+  .page-header.detail h1 { font-size: 21px; }
+  .page-header.detail .header-sub { padding: 0 24px; }
+
+  /* Sections */
+  .section-label { margin: 18px 20px 6px; font-size: 13px; font-weight: 600; color: var(--hint); }
+  .section-hint { margin: 8px 20px 0; font-size: 13px; color: var(--hint); line-height: 1.4; }
+  .list-section { margin: 0 16px; background: var(--section-bg); border-radius: 12px; overflow: hidden; }
+  
+  /* List Rows */
+  .list-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 0.5px solid var(--divider); cursor: pointer; }
+  .list-row:last-child { border-bottom: none; }
+  .list-row:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  .row-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--secondary-bg); color: var(--link); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .row-icon svg { width: 18px; height: 18px; }
+  .row-body { flex: 1; min-width: 0; }
+  .row-title { font-size: 16px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-subtitle { margin-top: 2px; font-size: 13px; color: var(--hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-badges { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--hint); }
+  .badge svg { width: 13px; height: 13px; }
+  .row-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--hint); }
+  
+  /* Accent Row */
+  .accent-row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 0.5px solid var(--divider); cursor: pointer; }
+  .accent-row:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  .accent-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--button); color: var(--button-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .accent-icon svg { width: 15px; height: 15px; }
+  .accent-label { font-size: 16px; font-weight: 600; color: var(--link); }
+
+  /* Empty State */
+  .empty-state { text-align: center; padding: 40px 32px 8px; color: var(--hint); }
+  .empty-state svg { width: 42px; height: 42px; margin: 0 auto 12px; }
+  .empty-state .empty-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .empty-state .empty-sub { margin-top: 4px; font-size: 14px; line-height: 1.4; }
+
+  /* Forms */
+  #edit-screen { display: none; padding-top: 4px; }
+  .form-section { margin: 0 16px; background: var(--section-bg); border-radius: 12px; overflow: hidden; }
+  .field { padding: 10px 14px; border-bottom: 0.5px solid var(--divider); }
+  .field:last-child { border-bottom: none; }
+  .field label { display: block; font-size: 13px; color: var(--hint); margin-bottom: 4px; }
+  .field input, .field textarea, .field select { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font-size: 16px; font-family: inherit; padding: 0; resize: none; }
+  .field textarea { min-height: 60px; }
+  
+  /* Pool Message Additions */
+  .pool-variant-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  .pool-variant-row textarea { flex: 1; min-height: 44px; border: none; outline: none; background: var(--secondary-bg); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 15px; font-family: inherit; resize: none; }
+  .pool-variant-remove { flex-shrink: 0; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--secondary-bg); color: var(--destructive); font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 0; }
+  .pool-variant-remove:active { opacity: 0.7; }
+
+  .field-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 0.5px solid var(--divider); }
+  .field-row:last-child { border-bottom: none; }
+  .field-row .field-title { font-size: 16px; }
+  .field-row .field-sub { font-size: 13px; color: var(--hint); margin-top: 1px; }
+
+  /* Segmented Control */
+  .segmented { display: flex; gap: 3px; background: var(--secondary-bg); border-radius: 9px; padding: 3px; }
+  .segment { flex: 1; padding: 7px 0; border: none; border-radius: 7px; background: transparent; color: var(--hint); font-size: 13px; font-weight: 600; }
+  .segment.active { background: var(--section-bg); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
+
+  /* Switch */
+  .switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; inset: 0; background: color-mix(in srgb, var(--hint) 35%, transparent); border-radius: 31px; transition: background 0.2s ease; }
+  .switch .slider::before { content: ""; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px; background: #ffffff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s ease; }
+  .switch input:checked + .slider { background: #34c759; }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  /* Photo */
+  .media-card { padding: 14px; }
+  .media-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px; }
+  .thumb { position: relative; width: 72px; height: 72px; border-radius: 10px; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block; }
+  .thumb-remove { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: none; border-radius: 50%; background: var(--destructive); color: #ffffff; font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .thumb-remove:active { opacity: 0.8; }
+  .media-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--hint); padding: 18px 0 6px; }
+  .media-empty svg { width: 30px; height: 30px; }
+  .media-empty span { font-size: 13px; }
+  .media-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .pill-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: none; border-radius: 20px; background: var(--secondary-bg); color: var(--link); font-size: 14px; font-weight: 600; }
+  .pill-btn:active { opacity: 0.7; }
+  .pill-btn svg { width: 15px; height: 15px; }
+
+  /* Buttons & Danger Zone */
+  .button-pair { display: flex; gap: 10px; margin: 14px 16px 0; }
+  .solid-btn { flex: 1; padding: 13px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; }
+  .solid-btn:active { opacity: 0.85; }
+  .solid-btn:disabled { opacity: 0.5; }
+  .solid-btn.primary { background: var(--button); color: var(--button-text); }
+  .solid-btn.danger { background: var(--destructive); color: #ffffff; }
+  .danger-zone { margin-top: 32px; }
+  .danger-zone .section-hint { margin: 0 20px 10px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Main screen -->
+  <div id="list-screen">
+    <div class="page-header">
+      <div class="avatar-circle" id="icon-bell-header"></div>
+      <h1>Echo</h1>
+      <p class="header-sub">Schedule reminders that reach you right in Telegram.</p>
+    </div>
+    <div class="section-label">Reminders</div>
+    <div class="list-section">
+      <div class="accent-row" id="row-new-reminder">
+        <div class="accent-icon" id="icon-plus"></div>
+        <div class="accent-label">New reminder</div>
+      </div>
+      <div id="list-container"></div>
+    </div>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <div id="icon-bell-empty"></div>
+      <div class="empty-title">No reminders yet</div>
+      <div class="empty-sub">Tap "New reminder" above to create your first one.</div>
+    </div>
+  </div>
+
+  <!-- Create/Edit screen -->
+  <div id="edit-screen">
+    <div class="page-header detail">
+      <div class="avatar-circle" id="icon-bell-edit"></div>
+      <h1 id="edit-title">New reminder</h1>
+      <p class="header-sub" id="edit-subtitle">Choose what to say and when to say it.</p>
+    </div>
+
+    <div class="section-label">Photo</div>
+    <div class="form-section media-card">
+      <div class="media-row" id="media-thumbnails" style="display:none;"></div>
+      <div class="media-empty" id="media-empty">
+        <div id="icon-image"></div>
+        <span>No photo attached</span>
+      </div>
+      <div class="media-actions">
+        <button type="button" class="pill-btn" id="btn-upload-image">
+          <span id="icon-upload"></span> <span id="upload-btn-label">Add photo</span>
+        </button>
+      </div>
+      <input type="file" id="f-media-file" accept="image/*" hidden>
+    </div>
+
+    <div class="button-pair">
+      <button type="button" class="solid-btn primary" id="btn-send-test">Send test</button>
+    </div>
+    <p class="section-hint">"Send test" delivers this message right now, without saving it.</p>
+
+    <div class="section-label">Message</div>
+    <div class="form-section">
+      <div class="field">
+        <label for="f-text">Text</label>
+        <textarea id="f-text" placeholder="What should this reminder say?"></textarea>
+        <div id="pool-variants" style="display:none;"></div>
+        <button type="button" class="pill-btn" id="btn-add-variant" style="display:none; margin-top:8px;">+ Add phrase</button>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-title">Message pool</div>
+          <div class="field-sub">Pick one phrase at random on every send</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="f-pool">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <p class="section-hint" id="pool-hint" style="display:none;">Separate each phrase with a blank line — Echo will send a random one every time this fires.</p>
+
+    <div class="section-label">Schedule</div>
+    <div class="form-section">
+      <div class="field" id="field-datetime">
+        <label for="f-date">Date &amp; time</label>
+        <input type="datetime-local" id="f-date">
+      </div>
+      <div class="field" id="field-time" style="display:none;">
+        <label for="f-time">Time</label>
+        <input type="time" id="f-time">
+      </div>
+      <div class="field">
+        <label>Repeat</label>
+        <div class="segmented" id="f-recurrence">
+          <button type="button" class="segment active" data-value="none">Once</button>
+          <button type="button" class="segment" data-value="daily">Daily</button>
+          <button type="button" class="segment" data-value="weekly">Weekly</button>
+          <button type="button" class="segment" data-value="yearly">Yearly</button>
+        </div>
+      </div>
+      <div class="field" id="field-enddate" style="display:none;">
+        <label for="f-enddate">End date (optional)</label>
+        <input type="date" id="f-enddate">
+      </div>
+    </div>
+    <p class="section-hint" id="enddate-hint" style="display:none;">Leave empty to repeat forever, or pick a date to stop.</p>
+
+    <div class="section-label">Destination</div>
+    <div class="form-section">
+      <div class="field">
+        <label for="f-route">Send to</label>
+        <select id="f-route"></select>
+      </div>
+    </div>
+
+    <div class="section-label">Buttons</div>
+    <div class="form-section">
+      <div class="field-row">
+        <div>
+          <div class="field-title">Snooze</div>
+          <div class="field-sub">Adds a "Snooze 15 min" button under the message</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="f-snooze"><span class="slider"></span></label>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-title">Tracker</div>
+          <div class="field-sub" id="tracker-sub">Adds a "Done" button and counts a streak</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="f-tracker"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="danger-zone" id="danger-zone" style="display:none;">
+      <p class="section-hint">Deleting a reminder is permanent and can't be undone.</p>
+      <div class="button-pair">
+        <button type="button" class="solid-btn danger" id="btn-delete">Delete reminder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  tg?.ready(); tg?.expand();
+
+  const API = "/api";
+  const initData = tg?.initData || "";
+
+  document.addEventListener("click", (event) => {
+    const active = document.activeElement;
+    if (!active) return;
+    const tag = active.tagName;
+    if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+    if (active === event.target || active.contains(event.target)) return;
+    active.blur();
+  });
+
+  const ICONS = {
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4 0 7-2.7 7-7 0-3-2-5.2-3-7-.4 2-1.8 3-1.8 3 .4-3-1-6-3.7-8-.2 3-1.3 5-3 7-1.5 1.7-2 3.6-2 5 0 4.3 3 7 6.5 7z"/></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>',
+  };
+
+  function setIcon(elementId, name) { const el = document.getElementById(elementId); if (el) el.innerHTML = ICONS[name]; }
+  setIcon("icon-bell-header", "bell"); setIcon("icon-bell-edit", "bell"); setIcon("icon-bell-empty", "bell");
+  setIcon("icon-plus", "plus"); setIcon("icon-image", "image"); setIcon("icon-upload", "upload"); setIcon("icon-trash", "trash");
+
+  const listScreen = document.getElementById("list-screen");
+  const editScreen = document.getElementById("edit-screen");
+  const listContainer = document.getElementById("list-container");
+  const emptyState = document.getElementById("empty-state");
+  const rowNewReminder = document.getElementById("row-new-reminder");
+  const editTitle = document.getElementById("edit-title");
+  const editSubtitle = document.getElementById("edit-subtitle");
+  const dangerZone = document.getElementById("danger-zone");
+  const btnDelete = document.getElementById("btn-delete");
+  const btnSendTest = document.getElementById("btn-send-test");
+
+  const fText = document.getElementById("f-text");
+  const fPool = document.getElementById("f-pool");
+  const poolHint = document.getElementById("pool-hint");
+  const poolVariantsContainer = document.getElementById("pool-variants");
+  const btnAddVariant = document.getElementById("btn-add-variant");
+  
+  const fieldDatetime = document.getElementById("field-datetime");
+  const fieldTime = document.getElementById("field-time");
+  const fDate = document.getElementById("f-date");
+  const fTime = document.getElementById("f-time");
+  const fieldEndDate = document.getElementById("field-enddate");
+  const fEndDate = document.getElementById("f-enddate");
+  const enddateHint = document.getElementById("enddate-hint");
+  const fRoute = document.getElementById("f-route");
+  const fSnooze = document.getElementById("f-snooze");
+  const fTracker = document.getElementById("f-tracker");
+  const trackerSub = document.getElementById("tracker-sub");
+  const recurrenceControl = document.getElementById("f-recurrence");
+
+  const fMediaFile = document.getElementById("f-media-file");
+  const btnUploadImage = document.getElementById("btn-upload-image");
+  const uploadBtnLabel = document.getElementById("upload-btn-label");
+  const mediaThumbnails = document.getElementById("media-thumbnails");
+  const mediaEmpty = document.getElementById("media-empty");
+
+  const TEXT_PLACEHOLDER_NORMAL = "What should this reminder say?";
+  const TEXT_PLACEHOLDER_POOL = "Drink a glass of water 💧\n\nTime to stretch for a minute";
+
+  let currentReminderId = null;
+  let currentMediaUrl = null;
+  let currentRecurrence = "none";
+  let chatsCache = [];
+  let chatsById = new Map();
+  let isDirty = false;
+
+  function markDirty() {
+    if (isDirty) return;
+    isDirty = true;
+    tg?.MainButton.show();
+  }
+
+  const REQUEST_TIMEOUT_MS = 20000;
+
+  async function api(path, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(API + path, {
+        ...options,
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": initData, ...(options.headers || {}) },
+      });
+      if (!res.ok) throw new Error(`API failed: ${res.status}`);
+      return res.status === 204 ? null : res.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  const fetchReminders = () => api("/reminders");
+  const fetchChats = () => api("/chats");
+  const createReminder = (data) => api("/reminders", { method: "POST", body: JSON.stringify(data) });
+  const updateReminder = (id, data) => api(`/reminders/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  const deleteReminderApi = (id) => api(`/reminders/${id}`, { method: "DELETE" });
+  const deleteUploadedImage = (path) => api("/uploads", { method: "DELETE", body: JSON.stringify({ path }) });
+  const sendTestMessage = (data) => api("/test-send", { method: "POST", body: JSON.stringify(data) });
+
+  async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(API + "/uploads", { method: "POST", headers: { "X-Telegram-Init-Data": initData }, body: formData, signal: controller.signal });
+      if (!res.ok) throw new Error(`Upload failed`);
+      return res.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const RECURRENCE_LABELS = { daily: "Daily", weekly: "Weekly", yearly: "Yearly" };
+
+  function formatDateTime(iso) {
+    const d = new Date(iso), now = new Date(), tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const hh = String(d.getHours()).padStart(2, "0"), mm = String(d.getMinutes()).padStart(2, "0"), time = `${hh}:${mm}`;
+    if (d.toDateString() === now.toDateString()) return `Today, ${time}`;
+    if (d.toDateString() === tomorrow.toDateString()) return `Tomorrow, ${time}`;
+    return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${time}`;
+  }
+
+  // Renders an ISO datetime into the "YYYY-MM-DDTHH:mm" format the native datetime-local input expects.
+  function toWheelDatetimeValue(iso) {
+    const d = new Date(iso), pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // Parses "YYYY-MM-DDTHH:mm" from the native datetime-local input.
+  function parseWheelDateTime(value) {
+    const [datePart, timePart] = value.split(/[T ]/);
+    const [y, m, d] = datePart.split("-").map(Number);
+    const [hh, mm] = (timePart || "00:00").split(":").map(Number);
+    return new Date(y, m - 1, d, hh, mm, 0, 0);
+  }
+
+  function toTimeValue(input) {
+    const d = input instanceof Date ? input : new Date(input), pad = n => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function toDateInputValue(iso) {
+    if (!iso) return "";
+    const d = new Date(iso), pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function nextDailyRunDate(timeStr) {
+    const [hh, mm] = timeStr.split(":").map(Number), now = new Date();
+    const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+    if (candidate <= now) candidate.setDate(candidate.getDate() + 1);
+    return candidate;
+  }
+
+  function chatOptionLabel(chat) { return chat.chat_type === "private" ? chat.title : `${chat.chat_type === "channel" ? "Channel" : "Group"}: ${chat.title}`; }
+  function escapeHtml(str) { const div = document.createElement("div"); div.textContent = str; return div.innerHTML; }
+  
+  function poolVariants(text) { return (text || "").split("\n\n").map((s) => s.trim()).filter(Boolean); }
+
+  async function renderList() {
+    let reminders, chats;
+    try {
+      [reminders, chats] = await Promise.all([fetchReminders(), fetchChats()]);
+    } catch (e) {
+      console.error(e);
+      listContainer.innerHTML = "";
+      emptyState.style.display = "block";
+      tg?.showAlert("Couldn't load your reminders. Please try again.");
+      return;
+    }
+    chatsCache = chats; chatsById = new Map(chats.map(c => [String(c.chat_id), c]));
+    if (reminders.length === 0) { listContainer.innerHTML = ""; emptyState.style.display = "block"; return; }
+    emptyState.style.display = "none";
+    listContainer.innerHTML = "";
+    reminders.forEach((r) => {
+      const chat = chatsById.get(String(r.chat_id)), routeLabel = chat ? chatOptionLabel(chat) : "Unknown chat";
+      const badges = [];
+      if (r.recurrence && r.recurrence !== "none") {
+        let recurrenceText = RECURRENCE_LABELS[r.recurrence] || r.recurrence;
+        if (r.end_date) recurrenceText += ` until ${formatDateTime(r.end_date).replace(/, .*/, "")}`;
+        badges.push(`<span class="badge">${ICONS.repeat}${recurrenceText}</span>`);
+      }
+      if (r.use_message_pool) { const count = poolVariants(r.text).length; badges.push(`<span class="badge">${ICONS.shuffle}Pool · ${count}</span>`); }
+      if (r.snooze_enabled) badges.push(`<span class="badge">${ICONS.clock}Snooze</span>`);
+      if (r.tracker_enabled) badges.push(`<span class="badge">${ICONS.flame}${r.streak_count > 0 ? `Streak ${r.streak_count}` : "Tracked"}</span>`);
+      if (r.media_url) badges.push(`<span class="badge">${ICONS.image}Photo</span>`);
+      const displayText = r.use_message_pool ? (poolVariants(r.text)[0] || r.text) : r.text;
+      const row = document.createElement("div"); row.className = "list-row"; row.dataset.id = r.id;
+      row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
+      row.addEventListener("click", () => openEditScreen(r));
+      listContainer.appendChild(row);
+    });
+  }
+
+  function mediaUrlToSrc(mediaUrl) { return mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://") ? mediaUrl : `/${mediaUrl}`; }
+
+  function renderMediaThumbnails() {
+    mediaThumbnails.innerHTML = "";
+    uploadBtnLabel.textContent = currentMediaUrl ? "Replace photo" : "Add photo";
+    if (!currentMediaUrl) { mediaThumbnails.style.display = "none"; mediaEmpty.style.display = "flex"; return; }
+    mediaThumbnails.style.display = "flex"; mediaEmpty.style.display = "none";
+    const thumb = document.createElement("div"); thumb.className = "thumb";
+    const img = document.createElement("img"); img.src = mediaUrlToSrc(currentMediaUrl); img.alt = "Attached image";
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "thumb-remove"; removeBtn.innerHTML = "&times;";
+    removeBtn.addEventListener("click", clearMedia);
+    thumb.appendChild(img); thumb.appendChild(removeBtn); mediaThumbnails.appendChild(thumb);
+  }
+
+  async function clearMedia() {
+    const url = currentMediaUrl; currentMediaUrl = null; renderMediaThumbnails(); markDirty();
+    if (url && url.startsWith("uploads/")) { try { await deleteUploadedImage(url); } catch (e) { console.error(e); } }
+  }
+
+  // Downscales to max 800x800 and re-encodes as JPEG (q=0.8) on a <canvas> before upload,
+  // so a high-res mobile photo never blocks the UI or gets sent over the wire at full size.
+  function compressImage(file, maxSize = 800, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Couldn't read the file"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Couldn't load the image"));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxSize || height > maxSize) {
+            if (width >= height) { height = Math.round(height * (maxSize / width)); width = maxSize; }
+            else { width = Math.round(width * (maxSize / height)); height = maxSize; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error("Compression failed"));
+            const name = (file.name || "photo").replace(/\.[^/.]+$/, "") + ".jpg";
+            resolve(new File([blob], name, { type: "image/jpeg" }));
+          }, "image/jpeg", quality);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  btnUploadImage.addEventListener("click", () => fMediaFile.click());
+  fMediaFile.addEventListener("change", async () => {
+    const file = fMediaFile.files[0];
+    if (!file) return;
+    const previousUrl = currentMediaUrl;
+    btnUploadImage.disabled = true;
+    try {
+      const compressed = await compressImage(file);
+      const { media_url } = await uploadImage(compressed);
+      currentMediaUrl = media_url;
+      renderMediaThumbnails(); markDirty();
+      if (previousUrl && previousUrl.startsWith("uploads/")) {
+        try { await deleteUploadedImage(previousUrl); } catch (e) { console.error(e); }
+      }
+    } catch (e) {
+      console.error(e);
+      tg?.showAlert("Couldn't upload the image.");
+    } finally {
+      btnUploadImage.disabled = false; fMediaFile.value = "";
+    }
+  });
+
+  function renderPoolVariants() {
+    const variants = poolVariants(fText.value);
+    if (variants.length === 0) variants.push("");
+    poolVariantsContainer.innerHTML = "";
+    variants.forEach((value, index) => addVariantRow(value, index));
+  }
+
+  function addVariantRow(value, index) {
+    const row = document.createElement("div"); row.className = "pool-variant-row";
+    const textarea = document.createElement("textarea"); textarea.rows = 1; textarea.placeholder = `Phrase ${index + 1}`; textarea.value = value;
+    textarea.addEventListener("input", syncPoolVariantsToText);
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
+    removeBtn.addEventListener("click", () => { row.remove(); syncPoolVariantsToText(); markDirty(); });
+    row.appendChild(textarea); row.appendChild(removeBtn); poolVariantsContainer.appendChild(row);
+    return textarea;
+  }
+
+  function syncPoolVariantsToText() {
+    const values = Array.from(poolVariantsContainer.querySelectorAll("textarea")).map((t) => t.value);
+    fText.value = values.join("\n\n");
+  }
+
+  btnAddVariant.addEventListener("click", () => {
+    syncPoolVariantsToText(); const textarea = addVariantRow("", poolVariantsContainer.children.length); textarea.focus(); markDirty();
+  });
+
+  function updatePoolUI() {
+    const enabled = fPool.checked;
+    fText.style.display = enabled ? "none" : "block";
+    poolVariantsContainer.style.display = enabled ? "block" : "none";
+    btnAddVariant.style.display = enabled ? "inline-flex" : "none";
+    poolHint.style.display = enabled ? "block" : "none";
+    if (enabled) renderPoolVariants();
+  }
+  fPool.addEventListener("change", () => { updatePoolUI(); markDirty(); });
+
+  function updateScheduleUI() {
+    const isDaily = currentRecurrence === "daily", isRecurring = currentRecurrence !== "none";
+    fieldDatetime.style.display = isDaily ? "none" : "block";
+    fieldTime.style.display = isDaily ? "block" : "none";
+    if (isDaily && !fTime.value && fDate.value) fTime.value = toTimeValue(parseWheelDateTime(fDate.value));
+    fieldEndDate.style.display = isRecurring ? "block" : "none";
+    enddateHint.style.display = isRecurring ? "block" : "none";
+    if (!isRecurring) fEndDate.value = "";
+  }
+
+  recurrenceControl.addEventListener("click", (event) => {
+    const btn = event.target.closest(".segment"); if (!btn) return;
+    currentRecurrence = btn.dataset.value;
+    recurrenceControl.querySelectorAll(".segment").forEach((s) => s.classList.toggle("active", s === btn));
+    updateScheduleUI(); markDirty();
+  });
+
+  function setRecurrenceControl(value) {
+    currentRecurrence = value || "none";
+    recurrenceControl.querySelectorAll(".segment").forEach((s) => s.classList.toggle("active", s.dataset.value === currentRecurrence));
+    updateScheduleUI();
+  }
+
+  async function populateRoutes(selectedChatId) {
+    fRoute.innerHTML = "";
+    chatsCache.forEach((chat) => {
+      const opt = document.createElement("option"); opt.value = chat.chat_id; opt.textContent = chatOptionLabel(chat);
+      if (selectedChatId !== undefined && String(chat.chat_id) === String(selectedChatId)) opt.selected = true;
+      fRoute.appendChild(opt);
+    });
+  }
+
+  async function openCreateScreen() {
+    currentReminderId = null; currentMediaUrl = null; isDirty = true;
+    editTitle.textContent = "New reminder"; editSubtitle.textContent = "Choose what to say and when to say it.";
+    dangerZone.style.display = "none"; trackerSub.textContent = 'Adds a "Done" button and counts a streak';
+    fText.value = ""; fPool.checked = false; updatePoolUI();
+    const soon = new Date(Date.now() + 60 * 60 * 1000);
+    fDate.value = toWheelDatetimeValue(soon.toISOString()); fTime.value = "09:00"; fEndDate.value = "";
+    fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
+    renderMediaThumbnails(); fMediaFile.value = "";
+    if (chatsCache.length === 0) {
+      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert("Couldn't load your chats."); }
+    }
+    await populateRoutes(); showEditScreen();
+  }
+
+  async function openEditScreen(reminder) {
+    currentReminderId = reminder.id; currentMediaUrl = reminder.media_url || null; isDirty = false;
+    editTitle.textContent = "Reminder"; editSubtitle.textContent = `Scheduled for ${formatDateTime(reminder.run_date)}`;
+    dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? `Adds a "Done" button · current streak: ${reminder.streak_count}` : 'Adds a "Done" button and counts a streak';
+    fText.value = reminder.text; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
+    fDate.value = toWheelDatetimeValue(reminder.run_date); fTime.value = toTimeValue(reminder.run_date); fEndDate.value = toDateInputValue(reminder.end_date);
+    fSnooze.checked = !!reminder.snooze_enabled; fTracker.checked = !!reminder.tracker_enabled;
+    setRecurrenceControl(reminder.recurrence || "none");
+    renderMediaThumbnails(); fMediaFile.value = "";
+    if (chatsCache.length === 0) {
+      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert("Couldn't load your chats."); }
+    }
+    await populateRoutes(reminder.chat_id); showEditScreen();
+  }
+
+  function showEditScreen() {
+    listScreen.style.display = "none"; editScreen.style.display = "block";
+    tg?.BackButton.show(); tg?.MainButton.setText("Save");
+    if (isDirty) tg?.MainButton.show(); else tg?.MainButton.hide();
+  }
+  function showListScreen(skipRender) {
+    editScreen.style.display = "none"; listScreen.style.display = "block";
+    tg?.BackButton.hide(); tg?.MainButton.hide();
+    if (!skipRender) renderList();
+  }
+
+  async function saveReminder() {
+    if (!fText.value.trim()) return tg?.showAlert("Please enter the reminder text.");
+    if (fPool.checked && poolVariants(fText.value).length < 2) return tg?.showAlert("Add at least two phrases to use a message pool.");
+    if (!fRoute.value) return tg?.showAlert("Please choose where to send this reminder.");
+    let runDateIso;
+    if (currentRecurrence === "daily") {
+      if (!fTime.value) return tg?.showAlert("Please choose a time.");
+      runDateIso = nextDailyRunDate(fTime.value).toISOString();
+    } else {
+      if (!fDate.value) return tg?.showAlert("Please choose a date and time.");
+      runDateIso = parseWheelDateTime(fDate.value).toISOString();
+    }
+    const isRecurring = currentRecurrence !== "none";
+    const endDateIso = isRecurring && fEndDate.value ? new Date(`${fEndDate.value}T23:59:59`).toISOString() : null;
+    const payload = {
+      chat_id: Number(fRoute.value), text: fText.value.trim(), run_date: runDateIso,
+      media_url: currentMediaUrl || null,
+      snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
+      end_date: endDateIso, use_message_pool: fPool.checked,
+    };
+    const savePromise = currentReminderId ? updateReminder(currentReminderId, payload) : createReminder(payload);
+    isDirty = false;
+    showListScreen();
+    savePromise.then(() => renderList()).catch((e) => {
+      console.error(e); tg?.showAlert("Couldn't save this reminder."); renderList();
+    });
+  }
+
+  async function handleDelete() {
+    if (currentReminderId === null) return;
+    tg?.showConfirm("Delete this reminder?", async (confirmed) => {
+      if (!confirmed) return;
+      const idToDelete = currentReminderId;
+      const row = listContainer.querySelector(`[data-id="${idToDelete}"]`);
+      if (row) row.remove();
+      if (!listContainer.children.length) emptyState.style.display = "block";
+      isDirty = false;
+      showListScreen(true);
+      try { await deleteReminderApi(idToDelete); }
+      catch (e) { console.error(e); tg?.showAlert("Couldn't delete this reminder."); }
+      finally { renderList(); }
+    });
+  }
+
+  async function handleSendTest() {
+    if (!fText.value.trim()) return tg?.showAlert("Please enter the reminder text first.");
+    if (!fRoute.value) return tg?.showAlert("Please choose a destination first.");
+    btnSendTest.disabled = true; const originalLabel = btnSendTest.textContent; btnSendTest.textContent = "Sending…";
+    try {
+      await sendTestMessage({ chat_id: Number(fRoute.value), text: fText.value.trim(), media_url: currentMediaUrl || null, use_message_pool: fPool.checked, snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked });
+      tg?.HapticFeedback?.notificationOccurred("success"); tg?.showAlert("Test message sent.");
+    } catch (e) { console.error(e); tg?.showAlert("Couldn't send the test message."); } finally { btnSendTest.disabled = false; btnSendTest.textContent = originalLabel; }
+  }
+
+  fText.addEventListener("input", markDirty);
+  poolVariantsContainer.addEventListener("input", markDirty);
+  [fDate, fTime, fEndDate, fRoute, fSnooze, fTracker].forEach((el) => el.addEventListener("change", markDirty));
+
+  rowNewReminder.addEventListener("click", openCreateScreen);
+  btnDelete.addEventListener("click", handleDelete); btnSendTest.addEventListener("click", handleSendTest);
+  tg?.BackButton.onClick(showListScreen); tg?.MainButton.onClick(saveReminder);
+
+  renderList();
+</script>
+</body>
+</html>

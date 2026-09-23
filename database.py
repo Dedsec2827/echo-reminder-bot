@@ -1,0 +1,293 @@
+"""
+database.py
+------------
+Асинхронний шар роботи з PostgreSQL (через asyncpg) для бота Echo.
+"""
+
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
+
+import asyncpg
+
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+RECURRENCE_INTERVALS: dict[str, timedelta] = {
+    "daily": timedelta(days=1),
+    "weekly": timedelta(days=7),
+}
+
+RECURRING_TYPES: frozenset[str] = frozenset({"daily", "weekly", "yearly"})
+
+_pool: Optional[asyncpg.Pool] = None
+
+
+def utcnow() -> datetime:
+    """Поточний момент як offset-aware datetime у UTC."""
+    return datetime.now(timezone.utc)
+
+
+def parse_iso_utc(value: str) -> datetime:
+    """Парсить ISO-рядок і завжди повертає offset-aware datetime в UTC."""
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _row_to_dict(row: Optional[asyncpg.Record]) -> Optional[dict[str, Any]]:
+    return dict(row) if row else None
+
+
+async def get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        _pool = await asyncpg.create_pool(DATABASE_URL)
+    return _pool
+
+
+async def close_pool() -> None:
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+
+
+async def _run_migrations(conn: asyncpg.Connection) -> None:
+    rows = await conn.fetch(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'reminders'"
+    )
+    columns = {r["column_name"] for r in rows}
+    migrations = {
+        "recurrence": "ALTER TABLE reminders ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none'",
+        "end_date": "ALTER TABLE reminders ADD COLUMN end_date TEXT",
+        "use_message_pool": "ALTER TABLE reminders ADD COLUMN use_message_pool INTEGER NOT NULL DEFAULT 0",
+    }
+    for column, ddl in migrations.items():
+        if column not in columns:
+            await conn.execute(ddl)
+
+
+async def init_db() -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id     BIGINT PRIMARY KEY,
+                username    TEXT,
+                first_name  TEXT,
+                created_at  TEXT NOT NULL
+            )
+            """
+        )
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chats (
+                chat_id     BIGINT PRIMARY KEY,
+                owner_id    BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+                title       TEXT NOT NULL,
+                chat_type   TEXT NOT NULL,
+                created_at  TEXT NOT NULL
+            )
+            """
+        )
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS reminders (
+                id                SERIAL PRIMARY KEY,
+                user_id           BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+                chat_id           BIGINT NOT NULL REFERENCES chats (chat_id) ON DELETE CASCADE,
+                text              TEXT NOT NULL,
+                media_url         TEXT,
+                run_date          TEXT NOT NULL,
+                recurrence        TEXT NOT NULL DEFAULT 'none',
+                end_date          TEXT,
+                use_message_pool  INTEGER NOT NULL DEFAULT 0,
+                is_active         INTEGER NOT NULL DEFAULT 1,
+                is_sent           INTEGER NOT NULL DEFAULT 0,
+                snooze_enabled    INTEGER NOT NULL DEFAULT 0,
+                tracker_enabled   INTEGER NOT NULL DEFAULT 0,
+                streak_count      INTEGER NOT NULL DEFAULT 0,
+                created_at        TEXT NOT NULL
+            )
+            """
+        )
+        await _run_migrations(conn)
+
+
+async def upsert_user(user_id: int, username: Optional[str], first_name: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        INSERT INTO users (user_id, username, first_name, created_at)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id) DO UPDATE SET
+            username = excluded.username,
+            first_name = excluded.first_name
+        """,
+        user_id, username, first_name, utcnow().isoformat(),
+    )
+
+
+async def get_user(user_id: int) -> Optional[dict]:
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT * FROM users WHERE user_id = $1", user_id)
+    return _row_to_dict(row)
+
+
+async def upsert_chat(chat_id: int, owner_id: int, title: str, chat_type: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        INSERT INTO chats (chat_id, owner_id, title, chat_type, created_at)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (chat_id) DO UPDATE SET
+            title = excluded.title,
+            chat_type = excluded.chat_type
+        """,
+        chat_id, owner_id, title, chat_type, utcnow().isoformat(),
+    )
+
+
+async def get_user_chats(owner_id: int) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM chats WHERE owner_id = $1 ORDER BY chat_type, title", owner_id
+    )
+    return [_row_to_dict(r) for r in rows]
+
+
+async def get_chat(chat_id: int) -> Optional[dict]:
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT * FROM chats WHERE chat_id = $1", chat_id)
+    return _row_to_dict(row)
+
+
+async def create_reminder(
+    user_id: int, chat_id: int, text: str, run_date: str, media_url: Optional[str] = None,
+    snooze_enabled: bool = False, tracker_enabled: bool = False, recurrence: str = "none",
+    end_date: Optional[str] = None, use_message_pool: bool = False,
+) -> int:
+    pool = await get_pool()
+    new_id = await pool.fetchval(
+        """
+        INSERT INTO reminders
+            (user_id, chat_id, text, media_url, run_date, recurrence, end_date,
+             use_message_pool, snooze_enabled, tracker_enabled, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id
+        """,
+        user_id, chat_id, text, media_url, run_date, recurrence, end_date,
+        int(use_message_pool), int(snooze_enabled), int(tracker_enabled),
+        utcnow().isoformat(),
+    )
+    return new_id
+
+
+async def get_reminders_by_user(user_id: int) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM reminders WHERE user_id = $1 AND is_active = 1 ORDER BY run_date ASC",
+        user_id,
+    )
+    return [_row_to_dict(r) for r in rows]
+
+
+async def get_reminder(reminder_id: int) -> Optional[dict]:
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT * FROM reminders WHERE id = $1", reminder_id)
+    return _row_to_dict(row)
+
+
+async def update_reminder(reminder_id: int, **fields: Any) -> None:
+    if not fields:
+        return
+    allowed = {
+        "chat_id", "text", "media_url", "run_date", "recurrence", "end_date",
+        "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active",
+    }
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return
+    pool = await get_pool()
+    set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
+    values = list(updates.values())
+    values.append(reminder_id)
+    await pool.execute(
+        f"UPDATE reminders SET {set_clause} WHERE id = ${len(values)}", *values
+    )
+
+
+async def delete_reminder(reminder_id: int) -> None:
+    pool = await get_pool()
+    await pool.execute("DELETE FROM reminders WHERE id = $1", reminder_id)
+
+
+async def get_due_reminders() -> list[dict]:
+    now = utcnow()
+    pool = await get_pool()
+    rows = await pool.fetch("SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0")
+    reminders = [_row_to_dict(r) for r in rows]
+    return [r for r in reminders if parse_iso_utc(r["run_date"]) <= now]
+
+
+async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "UPDATE reminders SET is_sent = 1, is_active = $1 WHERE id = $2",
+        int(keep_active), reminder_id,
+    )
+
+
+def compute_next_run_date(current_run_date_iso: str, recurrence: str) -> str:
+    if recurrence not in RECURRING_TYPES:
+        raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
+
+    def _advance(dt: datetime) -> datetime:
+        if recurrence == "yearly":
+            try:
+                return dt.replace(year=dt.year + 1)
+            except ValueError:
+                return dt.replace(year=dt.year + 1, day=28)
+        return dt + RECURRENCE_INTERVALS[recurrence]
+
+    now = utcnow()
+    next_date = _advance(parse_iso_utc(current_run_date_iso))
+    while next_date <= now:
+        next_date = _advance(next_date)
+    return next_date.isoformat()
+
+
+async def reschedule_recurring_reminder(reminder_id: int, next_run_date: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "UPDATE reminders SET run_date = $1, is_sent = 0, is_active = 1 WHERE id = $2",
+        next_run_date, reminder_id,
+    )
+
+
+async def snooze_reminder(reminder_id: int, minutes: int = 15) -> str:
+    new_run_date = (utcnow() + timedelta(minutes=minutes)).isoformat()
+    pool = await get_pool()
+    await pool.execute(
+        "UPDATE reminders SET run_date = $1, is_sent = 0, is_active = 1 WHERE id = $2",
+        new_run_date, reminder_id,
+    )
+    return new_run_date
+
+
+async def increment_streak(reminder_id: int, deactivate: bool = True) -> int:
+    pool = await get_pool()
+    if deactivate:
+        query = (
+            "UPDATE reminders SET streak_count = streak_count + 1, is_active = 0 "
+            "WHERE id = $1 RETURNING streak_count"
+        )
+    else:
+        query = (
+            "UPDATE reminders SET streak_count = streak_count + 1 "
+            "WHERE id = $1 RETURNING streak_count"
+        )
+    row = await pool.fetchrow(query, reminder_id)
+    return row["streak_count"] if row else 0
