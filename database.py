@@ -97,6 +97,7 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         "use_message_pool": "ALTER TABLE reminders ADD COLUMN use_message_pool INTEGER NOT NULL DEFAULT 0",
         "media_message_id": "ALTER TABLE reminders ADD COLUMN media_message_id BIGINT",
         "daily_times": "ALTER TABLE reminders ADD COLUMN daily_times TEXT",
+        "tz_offset_minutes": "ALTER TABLE reminders ADD COLUMN tz_offset_minutes INTEGER NOT NULL DEFAULT 0",
     }
     for column, ddl in migrations.items():
         if column not in columns:
@@ -155,6 +156,7 @@ async def init_db() -> None:
                 snooze_enabled    INTEGER NOT NULL DEFAULT 0,
                 tracker_enabled   INTEGER NOT NULL DEFAULT 0,
                 streak_count      INTEGER NOT NULL DEFAULT 0,
+                tz_offset_minutes INTEGER NOT NULL DEFAULT 0,
                 created_at        TEXT NOT NULL
             )
             """
@@ -237,52 +239,23 @@ async def create_reminder(
     media_message_id: Optional[int] = None,
     snooze_enabled: bool = False, tracker_enabled: bool = False, recurrence: str = "none",
     end_date: Optional[str] = None, use_message_pool: bool = False,
-    daily_times: Optional[list[str]] = None,
+    daily_times: Optional[list[str]] = None, tz_offset_minutes: int = 0,
 ) -> int:
     pool = await get_pool()
     new_id = await pool.fetchval(
         """
         INSERT INTO reminders
             (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
-             use_message_pool, snooze_enabled, tracker_enabled, daily_times, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+             use_message_pool, snooze_enabled, tracker_enabled, daily_times, tz_offset_minutes, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING id
         """,
         user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
         int(use_message_pool), int(snooze_enabled), int(tracker_enabled),
-        serialize_daily_times(daily_times),
+        serialize_daily_times(daily_times), tz_offset_minutes or 0,
         utcnow().isoformat(),
     )
     return new_id
-
-
-async def create_reminders_batch(
-    user_id: int, chat_id: int, text: str, run_dates: list[str], media_url: Optional[str] = None,
-    media_message_id: Optional[int] = None, snooze_enabled: bool = False, tracker_enabled: bool = False,
-    use_message_pool: bool = False,
-) -> list[int]:
-    """Creates one recurrence='none' row per run_date in a single transaction. Used when a
-    "Once" reminder is scheduled with several times - each becomes its own independent
-    one-off row so the scheduler's normal due-reminder logic needs no changes."""
-    pool = await get_pool()
-    ids: list[int] = []
-    created_at = utcnow().isoformat()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            for run_date in run_dates:
-                new_id = await conn.fetchval(
-                    """
-                    INSERT INTO reminders
-                        (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence,
-                         end_date, use_message_pool, snooze_enabled, tracker_enabled, daily_times, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, 'none', NULL, $7, $8, $9, NULL, $10)
-                    RETURNING id
-                    """,
-                    user_id, chat_id, text, media_url, media_message_id, run_date,
-                    int(use_message_pool), int(snooze_enabled), int(tracker_enabled), created_at,
-                )
-                ids.append(new_id)
-    return ids
 
 
 async def media_still_referenced(media_message_id: int, exclude_id: Optional[int] = None) -> bool:
@@ -323,6 +296,7 @@ async def update_reminder(reminder_id: int, **fields: Any) -> None:
     allowed = {
         "chat_id", "text", "media_url", "media_message_id", "run_date", "recurrence", "end_date",
         "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active", "daily_times",
+        "tz_offset_minutes",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -364,16 +338,16 @@ async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:
 
 
 def compute_next_run_date(
-    current_run_date_iso: str, recurrence: str, daily_times: Optional[list[str]] = None
-) -> str:
-    if recurrence not in RECURRING_TYPES:
-        raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
-
+    current_run_date_iso: str, recurrence: str, daily_times: Optional[list[str]] = None,
+    tz_offset_minutes: int = 0,
+) -> Optional[str]:
     now = utcnow()
+    offset = timedelta(minutes=tz_offset_minutes or 0)
+    now_local = now + offset
 
-    if recurrence == "daily" and daily_times:
-        # Multiple times per day: pick the next one still ahead today, or the
-        # earliest time tomorrow if every slot for today has already fired.
+    if daily_times and recurrence in ("daily", "none"):
+        # Multiple times per local day: pick the next one still ahead, or the earliest
+        # time on the next local day (daily only) if every slot has already fired.
         parsed: list[tuple[int, int]] = []
         for t in daily_times:
             try:
@@ -383,13 +357,20 @@ def compute_next_run_date(
                 continue
         if parsed:
             parsed.sort()
+            base_local = now_local if recurrence == "daily" else parse_iso_utc(current_run_date_iso) + offset
             for hh, mm in parsed:
-                candidate = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                if candidate > now:
-                    return candidate.isoformat()
-            hh, mm = parsed[0]
-            candidate = (now + timedelta(days=1)).replace(hour=hh, minute=mm, second=0, microsecond=0)
-            return candidate.isoformat()
+                candidate_utc = base_local.replace(hour=hh, minute=mm, second=0, microsecond=0) - offset
+                if candidate_utc > now:
+                    return candidate_utc.isoformat()
+            if recurrence == "daily":
+                hh, mm = parsed[0]
+                next_local = (now_local + timedelta(days=1)).replace(hour=hh, minute=mm, second=0, microsecond=0)
+                return (next_local - offset).isoformat()
+            # "none": every time for this "Once" reminder has already fired.
+            return None
+
+    if recurrence not in RECURRING_TYPES:
+        raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
 
     def _advance(dt: datetime) -> datetime:
         if recurrence == "yearly":

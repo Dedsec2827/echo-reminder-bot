@@ -37,81 +37,87 @@ router = Router()
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
         "welcome": (
-            "Hey, I'm Echo 👋 Think of me as a little personal assistant who remembers things so you don't have to.\n\n"
-            "Tell me what to remind you about and when — just once, or on repeat every day, week or year — "
-            "and I'll nudge you right on time. Got a group or a channel? Add me there as an admin and I can "
-            "schedule posts for your community too.\n\n"
-            "Want your habits to feel fresh? Turn on the Message Pool and I'll pick a random phrase from your list "
-            "each time, so reminders never sound stale. You can also add Snooze and Tracker buttons to any reminder "
-            "— I'll even keep count of your streak.\n\n"
-            "Tap the button below to set up your first reminder."
+            "This is Echo, a reminder and scheduling bot.\n\n"
+            "Functions:\n"
+            "— Scheduling one-off or recurring reminders (daily, weekly, yearly), including multiple "
+            "times per day.\n"
+            "— Administration of groups and channels: add the bot as an administrator to schedule posts "
+            "for a chat or channel.\n"
+            "— Message pool: a set of message variants from which one is selected at random on each send.\n"
+            "— Tracker and snooze controls attached to a reminder message.\n\n"
+            "Use the button below to open the application and create a reminder."
         ),
         "help": (
-            "<b>A quick tour of Echo</b>\n\n"
-            "Open the app with the button below and create a reminder — one-off or repeating "
-            "(daily, weekly or yearly). Pick a time, or a few, and I'll take it from there.\n\n"
-            "Want me to post in a group or channel? Add me there as an admin and it will show up as a destination "
-            "in the app, so you can schedule community posts ahead of time.\n\n"
-            "To keep things varied, switch on the <b>Message Pool</b>: write a few phrases, separate them with "
-            "a blank line, and I'll send a random one each time — perfect for habits you don't want to feel repetitive.\n\n"
-            "And if you like a bit of accountability, add <b>Snooze</b> to push a reminder back for a while, "
-            "or the <b>Tracker</b> to mark it done and build a streak.\n\n"
-            "Lost the app? Just send /app."
+            "<b>Echo — function reference</b>\n\n"
+            "Open the application with the button below to create a reminder: one-off or recurring "
+            "(daily, weekly, yearly). One or more times may be specified.\n\n"
+            "To post to a group or channel, add the bot there as an administrator. The chat will then "
+            "appear as a destination in the application.\n\n"
+            "<b>Message pool</b>: enter several message variants separated by a blank line. One variant "
+            "is selected at random for each send.\n\n"
+            "<b>Snooze</b> and <b>Tracker</b> may be enabled per reminder. Snooze postpones a reminder by "
+            "a selected interval. Tracker marks a reminder as completed and records a streak count.\n\n"
+            "To reopen the application, send /app."
         ),
-        "app": "Your reminders are here:",
+        "app": "Your reminders:",
         "open_echo": "Open Echo",
     },
     "uk": {
         "welcome": (
-            "Привіт, я Echo 👋 Вважай мене своїм маленьким персональним помічником, який пам'ятає замість тебе.\n\n"
-            "Просто скажи, про що і коли нагадати — один раз або з повтором щодня, щотижня чи щороку — "
-            "і я обов'язково штовхну тебе вчасно. Маєш групу чи канал? Додай мене туди адміном, і я зможу "
-            "планувати публікації для твоєї спільноти.\n\n"
-            "Хочеш, щоб звички не набридали? Увімкни Пул повідомлень — щоразу я обиратиму випадкову фразу зі "
-            "списку, тож нагадування не звучатимуть однаково. А ще до будь-якого нагадування можна додати кнопки "
-            "«Відкласти» та Трекер — я навіть рахуватиму твій стрік.\n\n"
-            "Тисни кнопку нижче й створюй перше нагадування."
+            "Це Echo — бот для нагадувань і планування публікацій.\n\n"
+            "Функції:\n"
+            "— Планування одноразових або повторюваних нагадувань (щодня, щотижня, щороку), "
+            "зокрема з кількома часами на день.\n"
+            "— Адміністрування груп і каналів: додайте бота адміністратором, щоб планувати публікації "
+            "в чаті чи каналі.\n"
+            "— Пул повідомлень: набір варіантів тексту, з якого при кожній відправці обирається один "
+            "випадковий.\n"
+            "— Кнопки трекера та відкладення на повідомленні нагадування.\n\n"
+            "Натисніть кнопку нижче, щоб відкрити застосунок і створити нагадування."
         ),
         "help": (
-            "<b>Коротко про Echo</b>\n\n"
-            "Відкрий застосунок кнопкою нижче й створи нагадування — одноразове чи повторюване "
-            "(щодня, щотижня або щороку). Обери час або кілька — далі я сам.\n\n"
-            "Хочеш, щоб я писав у групу чи канал? Додай мене туди адміном — вони з'являться в застосунку "
-            "як місце призначення, і можна буде планувати публікації для спільноти наперед.\n\n"
-            "Щоб було різноманітніше, увімкни <b>Пул повідомлень</b>: напиши кілька фраз, розділи їх порожнім "
-            "рядком — і я щоразу надсилатиму випадкову. Ідеально для звичок, які не хочеться робити нудними.\n\n"
-            "А якщо потрібна невелика підтримка — додай <b>«Відкласти»</b>, щоб перенести нагадування на потім, "
-            "або <b>Трекер</b>, щоб позначати виконане й накопичувати стрік.\n\n"
-            "Загубив застосунок? Просто надішли /app."
+            "<b>Echo — довідка щодо функцій</b>\n\n"
+            "Відкрийте застосунок кнопкою нижче, щоб створити нагадування: одноразове або повторюване "
+            "(щодня, щотижня, щороку). Можна вказати один або кілька часів.\n\n"
+            "Щоб публікувати в групі чи каналі, додайте бота туди адміністратором. Чат з'явиться "
+            "як місце призначення в застосунку.\n\n"
+            "<b>Пул повідомлень</b>: введіть кілька варіантів тексту, розділених порожнім рядком. "
+            "При кожній відправці обирається один випадковий варіант.\n\n"
+            "<b>Відкладення</b> та <b>Трекер</b> можна увімкнути для окремого нагадування. Відкладення "
+            "переносить нагадування на обраний інтервал. Трекер позначає нагадування виконаним і "
+            "веде облік серії виконань.\n\n"
+            "Щоб повторно відкрити застосунок, надішліть /app."
         ),
-        "app": "Твої нагадування тут:",
+        "app": "Ваші нагадування:",
         "open_echo": "Відкрити Echo",
     },
     "hy": {
         "welcome": (
-            "Բարև, ես Echo-ն եմ 👋 Պատկերացրու ինձ որպես քո փոքրիկ անձնական օգնական, որը հիշում է քո փոխարեն։\n\n"
-            "Պարզապես ասա՝ ինչի մասին և երբ հիշեցնեմ՝ մեկ անգամ կամ կրկնվող (ամեն օր, շաբաթ կամ տարի), "
-            "և ես ճիշտ ժամանակին կհիշեցնեմ։ Ունե՞ս խումբ կամ ալիք։ Ավելացրու ինձ այնտեղ որպես ադմին, "
-            "և ես կկարողանամ հրապարակումներ պլանավորել քո համայնքի համար։\n\n"
-            "Ուզո՞ւմ ես, որ սովորույթներդ չձանձրացնեն։ Միացրու «Հաղորդագրությունների խումբը»՝ ամեն անգամ ցանկից "
-            "պատահական արտահայտություն կընտրեմ, և հիշեցումները նույնը չեն հնչի։ Ցանկացած հիշեցման կարող ես ավելացնել "
-            "«Հետաձգել» կոճակը և «Հետևողը»՝ ես նույնիսկ քո շարքը կհաշվեմ։\n\n"
-            "Սեղմիր ներքևի կոճակը և ստեղծիր քո առաջին հիշեցումը։"
+            "Սա Echo-ն է՝ հիշեցումների և հրապարակումների պլանավորման բոտ։\n\n"
+            "Գործառույթներ.\n"
+            "— Մեկանգամյա կամ կրկնվող հիշեցումների պլանավորում (ամեն օր, շաբաթ, տարի), "
+            "այդ թվում՝ օրական մի քանի ժամով։\n"
+            "— Խմբերի և ալիքների կառավարում. ավելացրեք բոտը որպես ադմինիստրատոր՝ չատում կամ "
+            "ալիքում հրապարակումներ պլանավորելու համար։\n"
+            "— Հաղորդագրությունների խումբ. տեքստի տարբերակների ցանկ, որից յուրաքանչյուր ուղարկման "
+            "ժամանակ պատահականորեն ընտրվում է մեկը։\n"
+            "— Հետևող և հետաձգման կոճակներ հիշեցման հաղորդագրության վրա։\n\n"
+            "Օգտագործեք ներքևի կոճակը՝ հավելվածը բացելու և հիշեցում ստեղծելու համար։"
         ),
         "help": (
-            "<b>Կարճ ծանոթություն Echo-ի հետ</b>\n\n"
-            "Բացիր հավելվածը ներքևի կոճակով և ստեղծիր հիշեցում՝ մեկանգամյա կամ կրկնվող "
-            "(ամեն օր, շաբաթ կամ տարի)։ Ընտրիր մեկ կամ մի քանի ժամ, մնացածը իմ գործն է։\n\n"
-            "Ուզո՞ւմ ես, որ գրեմ խմբում կամ ալիքում։ Ավելացրու ինձ այնտեղ որպես ադմին. այն կհայտնվի հավելվածում "
-            "որպես ուղղություն, և կկարողանաս համայնքի համար հրապարակումներ պլանավորել նախապես։\n\n"
-            "Որպեսզի ամեն ինչ միապաղաղ չլինի, միացրու <b>Հաղորդագրությունների խումբը</b>. գրիր մի քանի արտահայտություն, "
-            "բաժանիր դրանք դատարկ տողով, և ես ամեն անգամ կուղարկեմ պատահականը։ Իդեալական է այն սովորույթների համար, "
-            "որոնք չես ուզում ձանձրալի դարձնել։\n\n"
-            "Իսկ եթե փոքր աջակցություն է պետք, ավելացրու <b>«Հետաձգել»</b>՝ հիշեցումը հետո տեղափոխելու համար, "
-            "կամ <b>Հետևողը</b>՝ կատարվածը նշելու և շարք կուտակելու համար։\n\n"
-            "Հավելվածը կորցրի՞ր։ Պարզապես ուղարկիր /app։"
+            "<b>Echo — գործառույթների նկարագիր</b>\n\n"
+            "Բացեք հավելվածը ներքևի կոճակով՝ հիշեցում ստեղծելու համար. մեկանգամյա կամ կրկնվող "
+            "(ամեն օր, շաբաթ, տարի)։ Կարելի է նշել մեկ կամ մի քանի ժամ։\n\n"
+            "Խմբում կամ ալիքում հրապարակելու համար ավելացրեք բոտը այնտեղ որպես ադմինիստրատոր։ "
+            "Չատը հայտնվելու է հավելվածում որպես ուղղություն։\n\n"
+            "<b>Հաղորդագրությունների խումբ</b>. մուտքագրեք մի քանի տեքստային տարբերակ՝ բաժանված "
+            "դատարկ տողով։ Յուրաքանչյուր ուղարկման ժամանակ պատահականորեն ընտրվում է մեկը։\n\n"
+            "<b>Հետաձգում</b> և <b>Հետևող</b> գործառույթները կարող են միացվել առանձին հիշեցման համար։ "
+            "Հետաձգումը հիշեցումը տեղափոխում է ընտրված ժամանակահատվածով։ Հետևողը նշում է հիշեցումը "
+            "կատարված և հաշվում է հաջորդական կատարումների քանակը։\n\n"
+            "Հավելվածը կրկին բացելու համար ուղարկեք /app։"
         ),
-        "app": "Քո հիշեցումները այստեղ են՝",
+        "app": "Ձեր հիշեցումները՝",
         "open_echo": "Բացել Echo-ն",
     },
 }
@@ -273,13 +279,21 @@ def _recurring_reminder_expired(reminder: dict, reference: datetime) -> bool:
     if not end_date: return False
     return reference >= db.parse_iso_utc(end_date)
 
-async def _advance_or_expire_recurring(reminder: dict) -> None:
+async def _advance_or_expire_recurring(bot: Bot, reminder: dict) -> None:
     recurrence = reminder["recurrence"]
     if _recurring_reminder_expired(reminder, db.utcnow()):
         await db.mark_reminder_sent(reminder["id"], keep_active=False)
         logger.info("Reminder %s reached its end date", reminder["id"])
         return
-    next_run_date = db.compute_next_run_date(reminder["run_date"], recurrence, daily_times=reminder.get("daily_times"))
+    next_run_date = db.compute_next_run_date(
+        reminder["run_date"], recurrence, reminder.get("daily_times"), reminder.get("tz_offset_minutes", 0)
+    )
+    if next_run_date is None:
+        # A "Once" reminder with multiple times has fired its last remaining slot.
+        await db.delete_reminder(reminder["id"])
+        await _delete_channel_media(bot, reminder)
+        logger.info("Reminder %s (one-off, multi-time) exhausted all times; deleted", reminder["id"])
+        return
     await db.reschedule_recurring_reminder(reminder["id"], next_run_date)
     logger.info("Reminder %s is recurring (%s); rescheduled to %s", reminder["id"], recurrence, next_run_date)
 
@@ -291,14 +305,14 @@ async def send_reminder(bot: Bot, reminder: dict) -> None:
         await _send_message_with_photo(bot, reminder["chat_id"], message_text, media_url, keyboard)
     except Exception:
         logger.exception("Failed to send reminder %s", reminder["id"])
-        if reminder.get("recurrence", "none") in db.RECURRING_TYPES: await _advance_or_expire_recurring(reminder)
+        if reminder.get("recurrence", "none") in db.RECURRING_TYPES: await _advance_or_expire_recurring(bot, reminder)
         else: await db.mark_reminder_sent(reminder["id"], keep_active=False)
         return
 
     recurrence = reminder.get("recurrence", "none")
     try:
-        if recurrence in db.RECURRING_TYPES:
-            await _advance_or_expire_recurring(reminder)
+        if recurrence in db.RECURRING_TYPES or (recurrence == "none" and reminder.get("daily_times")):
+            await _advance_or_expire_recurring(bot, reminder)
         elif keyboard:
             await db.mark_reminder_sent(reminder["id"], keep_active=True)
         else:

@@ -9,7 +9,6 @@ import hmac
 import json
 import logging
 import os
-from datetime import timedelta
 from typing import Literal, Optional
 from urllib.parse import parse_qsl
 
@@ -116,6 +115,7 @@ class ReminderUpdate(BaseModel):
     use_message_pool: Optional[bool] = None
     is_active: Optional[bool] = None
     daily_times: Optional[list[str]] = None
+    tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
 
 
 class TestSendIn(BaseModel):
@@ -228,28 +228,6 @@ async def _require_own_chat(uid: int, chat_id: int) -> None:
         raise HTTPException(status_code=404, detail="Route not found")
 
 
-def _once_run_dates(run_date: str, daily_times: Optional[list[str]], tz_offset_minutes: Optional[int]) -> list[str]:
-    """Turns a "Once" reminder's base date + list of "HH:MM" times into one ISO (UTC) timestamp per time.
-    run_date only supplies the calendar date (in the user's local timezone); the times supply the rest."""
-    if not daily_times:
-        return [run_date]
-    offset = timedelta(minutes=tz_offset_minutes or 0)
-    local_base = db.parse_iso_utc(run_date) + offset
-    run_dates: list[str] = []
-    for time_str in daily_times:
-        try:
-            hh, mm = time_str.split(":")
-            local_dt = local_base.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
-        except (ValueError, AttributeError):
-            continue
-        iso = (local_dt - offset).isoformat()
-        if iso not in run_dates:
-            run_dates.append(iso)
-    if not run_dates:
-        raise HTTPException(status_code=400, detail="No valid times provided")
-    return run_dates
-
-
 @app.post("/api/test-send")
 async def test_send(payload: TestSendIn, x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
     uid = get_current_user_id(x_telegram_init_data)
@@ -273,25 +251,13 @@ async def list_reminders(x_telegram_init_data: Optional[str] = Header(default=No
 async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
     uid = get_current_user_id(x_telegram_init_data)
     await _require_own_chat(uid, payload.chat_id)
-    # "Once" reminders: daily_times holds ALL the times for the chosen date; run_date only supplies
-    # the date. Each time becomes its own independent one-off row, so the scheduler logic is unchanged.
-    if payload.recurrence == "none":
-        run_dates = _once_run_dates(payload.run_date, payload.daily_times, payload.tz_offset_minutes)
-        ids = await db.create_reminders_batch(
-            user_id=uid, chat_id=payload.chat_id, text=payload.text, run_dates=run_dates,
-            media_url=payload.media_url, media_message_id=payload.media_message_id,
-            snooze_enabled=payload.snooze_enabled, tracker_enabled=payload.tracker_enabled,
-            use_message_pool=payload.use_message_pool,
-        )
-        reminders = [await db.get_reminder(rid) for rid in ids]
-        return reminders[0] if len(reminders) == 1 else {"reminders": reminders, "count": len(reminders)}
     new_id = await db.create_reminder(
         user_id=uid, chat_id=payload.chat_id, text=payload.text, run_date=payload.run_date,
         media_url=payload.media_url, media_message_id=payload.media_message_id,
         snooze_enabled=payload.snooze_enabled,
         tracker_enabled=payload.tracker_enabled, recurrence=payload.recurrence,
         end_date=payload.end_date, use_message_pool=payload.use_message_pool,
-        daily_times=payload.daily_times,
+        daily_times=payload.daily_times, tz_offset_minutes=payload.tz_offset_minutes or 0,
     )
     return await db.get_reminder(new_id)
 

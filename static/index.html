@@ -814,9 +814,9 @@
     reminders.forEach((r) => {
       const chat = chatsById.get(String(r.chat_id)), routeLabel = chat ? chatOptionLabel(chat) : t("unknown_chat");
       const badges = [];
-      if (r.recurrence && r.recurrence !== "none") {
-        let recurrenceText = recurrenceLabel(r.recurrence);
-        if (r.recurrence === "daily" && r.daily_times && r.daily_times.length) recurrenceText += ` (${r.daily_times.join(", ")})`;
+      if ((r.recurrence && r.recurrence !== "none") || (r.daily_times && r.daily_times.length > 1)) {
+        let recurrenceText = r.recurrence && r.recurrence !== "none" ? recurrenceLabel(r.recurrence) : "";
+        if (r.daily_times && r.daily_times.length > 1) recurrenceText += recurrenceText ? ` (${r.daily_times.join(", ")})` : `(${r.daily_times.join(", ")})`;
         if (r.end_date) recurrenceText += ` ${t("until_date", { date: formatDateTime(r.end_date).replace(/, .*/, "") })}`;
         badges.push(`<span class="badge">${ICONS.repeat}${escapeHtml(recurrenceText)}</span>`);
       }
