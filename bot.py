@@ -45,11 +45,17 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "app": "Твої нагадування тут:",
         "open_echo": "Відкрити Echo",
     },
+    "hy": {
+        "welcome": "Բարև! Echo-ն կօգնի ձեզ չմոռանալ կարևորը։\n\nՍեղմեք ներքևի կոճակը՝ ձեր հիշեցումները բացելու համար։",
+        "app": "Ձեր հիշեցումները այստեղ են՝",
+        "open_echo": "Բացել Echo-ն",
+    },
 }
-LANGUAGE_PROMPT = "Please choose your language / Будь ласка, оберіть мову:"
+LANGUAGE_PROMPT = "Please choose your language / Будь ласка, оберіть мову / Խնդրում ենք ընտրել լեզուն:"
 LANGUAGE_PICKER_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[[
     InlineKeyboardButton(text="🇬🇧 English", callback_data="lang:en"),
     InlineKeyboardButton(text="🇺🇦 Українська", callback_data="lang:uk"),
+    InlineKeyboardButton(text="🇦🇲 Հայերեն", callback_data="lang:hy"),
 ]])
 
 
@@ -86,14 +92,27 @@ async def cmd_app(message: Message) -> None:
     lang = await db.get_user_language(message.from_user.id)
     await message.answer(t(lang, "app"), reply_markup=_webapp_keyboard(lang))
 
+ACTIVE_CHAT_STATUSES = ("member", "administrator", "creator")
+REMOVED_CHAT_STATUSES = ("left", "kicked")
+
 @router.my_chat_member()
 async def on_bot_added_to_chat(event: ChatMemberUpdated) -> None:
+    if event.chat.type == ChatType.PRIVATE:
+        return
     new_status = event.new_chat_member.status
-    if new_status not in ("member", "administrator") or event.chat.type == ChatType.PRIVATE: return
-    owner_id = event.from_user.id
-    await db.upsert_user(owner_id, event.from_user.username, event.from_user.first_name)
-    await db.upsert_chat(chat_id=event.chat.id, owner_id=owner_id, title=event.chat.title or "Untitled chat", chat_type=event.chat.type)
-    logger.info("Chat %s saved as route for user %s", event.chat.id, owner_id)
+    if new_status in ACTIVE_CHAT_STATUSES:
+        # Fires for both a plain group membership and a channel/group admin promotion,
+        # and again on re-promotion - upsert_chat is idempotent so this stays correct
+        # however many times it fires.
+        owner_id = event.from_user.id
+        await db.upsert_user(owner_id, event.from_user.username, event.from_user.first_name)
+        await db.upsert_chat(chat_id=event.chat.id, owner_id=owner_id, title=event.chat.title or "Untitled chat", chat_type=event.chat.type)
+        logger.info("Chat %s saved as route for user %s", event.chat.id, owner_id)
+    elif new_status in REMOVED_CHAT_STATUSES:
+        # Bot removed/kicked - drop the stale destination so it stops showing up as a
+        # route (this also cascades to delete any reminders still pointed at it).
+        await db.delete_chat(event.chat.id)
+        logger.info("Bot removed from chat %s; route deleted", event.chat.id)
 
 def _pick_message(text: str, use_message_pool: bool) -> str:
     if not use_message_pool: return text
@@ -115,7 +134,9 @@ def _snooze_picker_keyboard(reminder_id: int) -> InlineKeyboardMarkup:
 
 async def _send_message_with_photo(bot: Bot, chat_id: int, text: str, media_url: Optional[str], keyboard: Optional[InlineKeyboardMarkup]) -> None:
     if media_url:
-        await bot.send_photo(chat_id=chat_id, photo=media_url, caption=text, reply_markup=keyboard, disable_notification=False)
+        # A photo-only reminder has empty/None text - Telegram accepts caption=None fine,
+        # it just sends the photo without a caption instead of erroring on an empty string.
+        await bot.send_photo(chat_id=chat_id, photo=media_url, caption=text or None, reply_markup=keyboard, disable_notification=False)
     else:
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard, disable_notification=False)
 
@@ -126,6 +147,10 @@ async def _delete_channel_media(bot: Bot, reminder: dict) -> None:
     (auto-delete after sending, or the "Done" button) without going through the API."""
     message_id = reminder.get("media_message_id")
     if not message_id or not CHANNEL_ID:
+        return
+    # A multi-time "Once" reminder can share one photo across several rows - skip deletion
+    # while any sibling reminder still points at the same channel post.
+    if await db.media_still_referenced(message_id, exclude_id=reminder.get("id")):
         return
     try:
         await bot.delete_message(chat_id=int(CHANNEL_ID), message_id=message_id)

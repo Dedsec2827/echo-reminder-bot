@@ -84,7 +84,7 @@ def get_current_user_id(x_telegram_init_data: Optional[str] = Header(default=Non
 
 class ReminderIn(BaseModel):
     chat_id: int
-    text: str
+    text: str = ""
     run_date: str
     media_url: Optional[str] = None
     media_message_id: Optional[int] = None
@@ -113,7 +113,7 @@ class ReminderUpdate(BaseModel):
 
 class TestSendIn(BaseModel):
     chat_id: int
-    text: str
+    text: str = ""
     media_url: Optional[str] = None
     use_message_pool: bool = False
     snooze_enabled: bool = False
@@ -139,9 +139,21 @@ async def list_chats(x_telegram_init_data: Optional[str] = Header(default=None))
     return await db.get_user_chats(uid)
 
 
-async def _delete_channel_message(bot_instance, message_id: Optional[int]) -> None:
-    """Best-effort removal of a stored photo's channel post; never raises."""
+@app.get("/api/me")
+async def get_me(x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
+    """Lets the Mini App mirror the language the user picked in the bot chat."""
+    uid = get_current_user_id(x_telegram_init_data)
+    language = await db.get_user_language(uid)
+    return {"user_id": uid, "language": language}
+
+
+async def _delete_channel_message(bot_instance, message_id: Optional[int], exclude_reminder_id: Optional[int] = None) -> None:
+    """Best-effort removal of a stored photo's channel post; never raises.
+    A multi-time "Once" reminder can share one media_message_id across several rows, so
+    this skips deletion while any OTHER reminder (besides exclude_reminder_id) still uses it."""
     if not bot_instance or not message_id or not CHANNEL_ID:
+        return
+    if await db.media_still_referenced(message_id, exclude_id=exclude_reminder_id):
         return
     try:
         await bot_instance.delete_message(chat_id=int(CHANNEL_ID), message_id=message_id)
@@ -225,6 +237,26 @@ async def list_reminders(x_telegram_init_data: Optional[str] = Header(default=No
 @app.post("/api/reminders")
 async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
     uid = get_current_user_id(x_telegram_init_data)
+    # For a "Once" reminder, daily_times (if present) carries EXTRA times on the same
+    # calendar date as run_date - split into one independent one-off row per time so the
+    # scheduler's normal due-reminder logic doesn't need to change.
+    if payload.recurrence == "none" and payload.daily_times:
+        base_dt = db.parse_iso_utc(payload.run_date)
+        run_dates = [payload.run_date]
+        for time_str in payload.daily_times:
+            try:
+                hh, mm = time_str.split(":")
+                run_dates.append(base_dt.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0).isoformat())
+            except (ValueError, AttributeError):
+                continue
+        ids = await db.create_reminders_batch(
+            user_id=uid, chat_id=payload.chat_id, text=payload.text, run_dates=run_dates,
+            media_url=payload.media_url, media_message_id=payload.media_message_id,
+            snooze_enabled=payload.snooze_enabled, tracker_enabled=payload.tracker_enabled,
+            use_message_pool=payload.use_message_pool,
+        )
+        reminders = [await db.get_reminder(rid) for rid in ids]
+        return reminders[0] if len(reminders) == 1 else {"reminders": reminders, "count": len(reminders)}
     new_id = await db.create_reminder(
         user_id=uid, chat_id=payload.chat_id, text=payload.text, run_date=payload.run_date,
         media_url=payload.media_url, media_message_id=payload.media_message_id,
@@ -249,7 +281,7 @@ async def edit_reminder(reminder_id: int, payload: ReminderUpdate, x_telegram_in
     await db.update_reminder(reminder_id, **fields)
     if "media_url" in fields and fields["media_url"] != reminder.get("media_url"):
         # Photo was replaced or cleared - drop the old channel post instead of the old file.
-        await _delete_channel_message(getattr(app.state, "bot", None), old_media_message_id)
+        await _delete_channel_message(getattr(app.state, "bot", None), old_media_message_id, exclude_reminder_id=reminder_id)
     return await db.get_reminder(reminder_id)
 
 @app.delete("/api/reminders/{reminder_id}")
@@ -258,5 +290,5 @@ async def remove_reminder(reminder_id: int = Path(...), x_telegram_init_data: Op
     reminder = await db.get_reminder(reminder_id)
     if not reminder or reminder["user_id"] != uid: raise HTTPException(status_code=404, detail="Reminder not found")
     await db.delete_reminder(reminder_id)
-    await _delete_channel_message(getattr(app.state, "bot", None), reminder.get("media_message_id"))
+    await _delete_channel_message(getattr(app.state, "bot", None), reminder.get("media_message_id"), exclude_reminder_id=reminder_id)
     return {"ok": True}

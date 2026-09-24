@@ -162,20 +162,20 @@
     <div class="page-header">
       <div class="avatar-circle" id="icon-bell-header"></div>
       <h1>Echo</h1>
-      <p class="header-sub">Schedule reminders that reach you right in Telegram.</p>
+      <p class="header-sub" data-i18n="header_sub">Schedule reminders that reach you right in Telegram.</p>
     </div>
-    <div class="section-label">Reminders</div>
+    <div class="section-label" data-i18n="section_reminders">Reminders</div>
     <div class="list-section">
       <div class="accent-row" id="row-new-reminder">
         <div class="accent-icon" id="icon-plus"></div>
-        <div class="accent-label">New reminder</div>
+        <div class="accent-label" data-i18n="new_reminder">New reminder</div>
       </div>
       <div id="list-container"></div>
     </div>
     <div id="empty-state" class="empty-state" style="display:none;">
       <div id="icon-bell-empty"></div>
-      <div class="empty-title">No reminders yet</div>
-      <div class="empty-sub">Tap "New reminder" above to create your first one.</div>
+      <div class="empty-title" data-i18n="empty_title">No reminders yet</div>
+      <div class="empty-sub" data-i18n="empty_sub">Tap "New reminder" above to create your first one.</div>
     </div>
   </div>
 
@@ -187,38 +187,38 @@
       <p class="header-sub" id="edit-subtitle">Choose what to say and when to say it.</p>
     </div>
 
-    <div class="section-label">Photo</div>
+    <div class="section-label" data-i18n="section_photo">Photo</div>
     <div class="form-section media-card">
       <div class="media-row" id="media-thumbnails" style="display:none;"></div>
       <div class="media-empty" id="media-empty">
         <div id="icon-image"></div>
-        <span>No photo attached</span>
+        <span data-i18n="no_photo">No photo attached</span>
       </div>
       <div class="media-actions">
         <button type="button" class="pill-btn" id="btn-upload-image">
-          <span id="icon-upload"></span> <span id="upload-btn-label">Add photo</span>
+          <span id="icon-upload"></span> <span id="upload-btn-label" data-i18n="add_photo">Add photo</span>
         </button>
       </div>
       <input type="file" id="f-media-file" accept="image/*" hidden>
     </div>
 
     <div class="button-pair">
-      <button type="button" class="solid-btn primary" id="btn-send-test">Send test</button>
+      <button type="button" class="solid-btn primary" id="btn-send-test" data-i18n="send_test">Send test</button>
     </div>
-    <p class="section-hint">"Send test" delivers this message right now, without saving it.</p>
+    <p class="section-hint" data-i18n="send_test_hint">"Send test" delivers this message right now, without saving it.</p>
 
-    <div class="section-label">Message</div>
+    <div class="section-label" data-i18n="section_message">Message</div>
     <div class="form-section">
       <div class="field">
-        <label for="f-text">Text</label>
+        <label for="f-text" data-i18n="text_label">Text</label>
         <textarea id="f-text" placeholder="What should this reminder say?"></textarea>
         <div id="pool-variants" style="display:none;"></div>
-        <button type="button" class="pill-btn" id="btn-add-variant" style="display:none; margin-top:8px;">+ Add phrase</button>
+        <button type="button" class="pill-btn" id="btn-add-variant" style="display:none; margin-top:8px;" data-i18n="add_phrase">+ Add phrase</button>
       </div>
       <div class="field-row">
         <div>
-          <div class="field-title">Message pool</div>
-          <div class="field-sub">Pick one phrase at random on every send</div>
+          <div class="field-title" data-i18n="pool_title">Message pool</div>
+          <div class="field-sub" data-i18n="pool_sub">Pick one phrase at random on every send</div>
         </div>
         <label class="switch">
           <input type="checkbox" id="f-pool">
@@ -226,55 +226,56 @@
         </label>
       </div>
     </div>
-    <p class="section-hint" id="pool-hint" style="display:none;">Separate each phrase with a blank line — Echo will send a random one every time this fires.</p>
+    <p class="section-hint" id="pool-hint" style="display:none;" data-i18n="pool_hint">Separate each phrase with a blank line — Echo will send a random one every time this fires.</p>
 
-    <div class="section-label">Schedule</div>
+    <div class="section-label" data-i18n="section_schedule">Schedule</div>
     <div class="form-section">
       <div class="field" id="field-datetime">
-        <label for="f-date">Date &amp; time</label>
+        <label for="f-date" data-i18n="datetime_label">Date &amp; time</label>
         <input type="datetime-local" id="f-date">
       </div>
       <div class="field" id="field-daily-times" style="display:none;">
-        <label>Times</label>
+        <label id="daily-times-label">Times</label>
         <div id="daily-times-list"></div>
-        <button type="button" class="pill-btn" id="btn-add-time" style="margin-top:4px;">+ Add time</button>
+        <button type="button" class="pill-btn" id="btn-add-time" style="margin-top:4px;" data-i18n="add_time">+ Add time</button>
       </div>
       <div class="field">
-        <label>Repeat</label>
+        <label data-i18n="repeat_label">Repeat</label>
         <div class="segmented" id="f-recurrence">
-          <button type="button" class="segment active" data-value="none">Once</button>
-          <button type="button" class="segment" data-value="daily">Daily</button>
-          <button type="button" class="segment" data-value="weekly">Weekly</button>
-          <button type="button" class="segment" data-value="yearly">Yearly</button>
+          <button type="button" class="segment active" data-value="none" data-i18n="seg_once">Once</button>
+          <button type="button" class="segment" data-value="daily" data-i18n="seg_daily">Daily</button>
+          <button type="button" class="segment" data-value="weekly" data-i18n="seg_weekly">Weekly</button>
+          <button type="button" class="segment" data-value="yearly" data-i18n="seg_yearly">Yearly</button>
         </div>
       </div>
       <div class="field" id="field-enddate" style="display:none;">
-        <label for="f-enddate">End date (optional)</label>
+        <label for="f-enddate" data-i18n="enddate_label">End date (optional)</label>
         <input type="date" id="f-enddate">
       </div>
     </div>
-    <p class="section-hint" id="enddate-hint" style="display:none;">Leave empty to repeat forever, or pick a date to stop.</p>
+    <p class="section-hint" id="extra-times-hint" style="display:none;" data-i18n="extra_times_hint"></p>
+    <p class="section-hint" id="enddate-hint" style="display:none;" data-i18n="enddate_hint">Leave empty to repeat forever, or pick a date to stop.</p>
 
-    <div class="section-label">Destination</div>
+    <div class="section-label" data-i18n="section_destination">Destination</div>
     <div class="form-section">
       <div class="field">
-        <label for="f-route">Send to</label>
+        <label for="f-route" data-i18n="route_label">Send to</label>
         <select id="f-route"></select>
       </div>
     </div>
 
-    <div class="section-label">Buttons</div>
+    <div class="section-label" data-i18n="section_buttons">Buttons</div>
     <div class="form-section">
       <div class="field-row">
         <div>
-          <div class="field-title">Snooze</div>
-          <div class="field-sub">Adds a "Snooze 15 min" button under the message</div>
+          <div class="field-title" data-i18n="snooze_title">Snooze</div>
+          <div class="field-sub" data-i18n="snooze_sub">Adds a "Snooze 15 min" button under the message</div>
         </div>
         <label class="switch"><input type="checkbox" id="f-snooze"><span class="slider"></span></label>
       </div>
       <div class="field-row">
         <div>
-          <div class="field-title">Tracker</div>
+          <div class="field-title" data-i18n="tracker_title">Tracker</div>
           <div class="field-sub" id="tracker-sub">Adds a "Done" button and counts a streak</div>
         </div>
         <label class="switch"><input type="checkbox" id="f-tracker"><span class="slider"></span></label>
@@ -282,9 +283,9 @@
     </div>
 
     <div class="danger-zone" id="danger-zone" style="display:none;">
-      <p class="section-hint">Deleting a reminder is permanent and can't be undone.</p>
+      <p class="section-hint" data-i18n="delete_hint">Deleting a reminder is permanent and can't be undone.</p>
       <div class="button-pair">
-        <button type="button" class="solid-btn danger" id="btn-delete">Delete reminder</button>
+        <button type="button" class="solid-btn danger" id="btn-delete" data-i18n="delete_btn">Delete reminder</button>
       </div>
     </div>
   </div>
@@ -315,6 +316,268 @@
     if (active === event.target || active.contains(event.target)) return;
     active.blur();
   });
+
+  // ---------------------------------------------------------------------
+  // i18n: English (fallback/default), Ukrainian, Armenian.
+  // ---------------------------------------------------------------------
+  const I18N = {
+    en: {
+      header_sub: "Schedule reminders that reach you right in Telegram.",
+      section_reminders: "Reminders",
+      new_reminder: "New reminder",
+      empty_title: "No reminders yet",
+      empty_sub: 'Tap "New reminder" above to create your first one.',
+      edit_subtitle_new: "Choose what to say and when to say it.",
+      edit_title_existing: "Reminder",
+      edit_subtitle_existing: "Scheduled for {date}",
+      section_photo: "Photo",
+      no_photo: "No photo attached",
+      add_photo: "Add photo",
+      replace_photo: "Replace photo",
+      send_test: "Send test",
+      send_test_hint: '"Send test" delivers this message right now, without saving it.',
+      section_message: "Message",
+      text_label: "Text",
+      text_placeholder_normal: "What should this reminder say?",
+      text_placeholder_pool: "Drink a glass of water 💧\n\nTime to stretch for a minute",
+      add_phrase: "+ Add phrase",
+      phrase_placeholder: "Phrase {n}",
+      pool_title: "Message pool",
+      pool_sub: "Pick one phrase at random on every send",
+      pool_hint: "Separate each phrase with a blank line — Echo will send a random one every time this fires.",
+      section_schedule: "Schedule",
+      datetime_label: "Date & time",
+      times_label: "Times",
+      extra_times_label: "Additional times",
+      extra_times_hint: "Optional — each extra time creates its own one-time reminder on the same date.",
+      add_time: "+ Add time",
+      repeat_label: "Repeat",
+      seg_once: "Once",
+      seg_daily: "Daily",
+      seg_weekly: "Weekly",
+      seg_yearly: "Yearly",
+      enddate_label: "End date (optional)",
+      enddate_hint: "Leave empty to repeat forever, or pick a date to stop.",
+      section_destination: "Destination",
+      route_label: "Send to",
+      section_buttons: "Buttons",
+      snooze_title: "Snooze",
+      snooze_sub: 'Adds a "Snooze 15 min" button under the message',
+      tracker_title: "Tracker",
+      tracker_sub_default: 'Adds a "Done" button and counts a streak',
+      tracker_sub_streak: 'Adds a "Done" button · current streak: {n}',
+      delete_hint: "Deleting a reminder is permanent and can't be undone.",
+      delete_btn: "Delete reminder",
+      save_btn: "Save",
+      sending_label: "Sending…",
+      alert_enter_text_or_photo: "Please enter some text or attach a photo.",
+      alert_pool_min: "Add at least two phrases to use a message pool.",
+      alert_choose_route: "Please choose where to send this reminder.",
+      alert_choose_time: "Please choose a time.",
+      alert_choose_datetime: "Please choose a date and time.",
+      alert_couldnt_load_reminders: "Couldn't load your reminders. Please try again.",
+      alert_couldnt_load_chats: "Couldn't load your chats.",
+      alert_couldnt_save: "Couldn't save this reminder.",
+      alert_couldnt_delete: "Couldn't delete this reminder.",
+      alert_couldnt_upload: "Couldn't upload the image.",
+      alert_image_too_large: "Image is still too large after compression.",
+      alert_enter_text_test: "Please enter some text or attach a photo first.",
+      alert_choose_destination_test: "Please choose a destination first.",
+      test_sent: "Test message sent.",
+      couldnt_send_test: "Couldn't send the test message.",
+      confirm_delete: "Delete this reminder?",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+      until_date: "until {date}",
+      pool_badge: "Pool · {n}",
+      snooze_badge: "Snooze",
+      tracked_badge: "Tracked",
+      streak_badge: "Streak {n}",
+      photo_badge: "Photo",
+      unknown_chat: "Unknown chat",
+      channel_prefix: "Channel: ",
+      group_prefix: "Group: ",
+      photo_only_label: "Photo reminder",
+    },
+    uk: {
+      header_sub: "Плануйте нагадування, які приходять прямо в Telegram.",
+      section_reminders: "Нагадування",
+      new_reminder: "Нове нагадування",
+      empty_title: "Поки немає нагадувань",
+      empty_sub: "Натисніть «Нове нагадування» вище, щоб створити перше.",
+      edit_subtitle_new: "Оберіть, що сказати і коли це сказати.",
+      edit_title_existing: "Нагадування",
+      edit_subtitle_existing: "Заплановано на {date}",
+      section_photo: "Фото",
+      no_photo: "Фото не додано",
+      add_photo: "Додати фото",
+      replace_photo: "Замінити фото",
+      send_test: "Надіслати тест",
+      send_test_hint: "«Надіслати тест» доставляє це повідомлення прямо зараз, без збереження.",
+      section_message: "Повідомлення",
+      text_label: "Текст",
+      text_placeholder_normal: "Що має сказати це нагадування?",
+      text_placeholder_pool: "Випий склянку води 💧\n\nЧас розім’ятися хвилинку",
+      add_phrase: "+ Додати фразу",
+      phrase_placeholder: "Фраза {n}",
+      pool_title: "Пул повідомлень",
+      pool_sub: "Обирати випадкову фразу щоразу",
+      pool_hint: "Розділяйте кожну фразу порожнім рядком — Echo надсилатиме випадкову щоразу.",
+      section_schedule: "Розклад",
+      datetime_label: "Дата й час",
+      times_label: "Час",
+      extra_times_label: "Додатковий час",
+      extra_times_hint: "Необов’язково — кожен додатковий час створює окреме одноразове нагадування на ту саму дату.",
+      add_time: "+ Додати час",
+      repeat_label: "Повтор",
+      seg_once: "Один раз",
+      seg_daily: "Щодня",
+      seg_weekly: "Щотижня",
+      seg_yearly: "Щороку",
+      enddate_label: "Дата завершення (необов’язково)",
+      enddate_hint: "Залиште порожнім, щоб повторювати завжди, або оберіть дату завершення.",
+      section_destination: "Призначення",
+      route_label: "Надіслати до",
+      section_buttons: "Кнопки",
+      snooze_title: "Відкласти",
+      snooze_sub: "Додає кнопку «Відкласти на 15 хв» під повідомленням",
+      tracker_title: "Трекер",
+      tracker_sub_default: "Додає кнопку «Виконано» і рахує стрік",
+      tracker_sub_streak: "Додає кнопку «Виконано» · поточний стрік: {n}",
+      delete_hint: "Видалення нагадування незворотне.",
+      delete_btn: "Видалити нагадування",
+      save_btn: "Зберегти",
+      sending_label: "Надсилання…",
+      alert_enter_text_or_photo: "Введіть текст або додайте фото.",
+      alert_pool_min: "Додайте щонайменше дві фрази для пулу повідомлень.",
+      alert_choose_route: "Оберіть, куди надіслати нагадування.",
+      alert_choose_time: "Оберіть час.",
+      alert_choose_datetime: "Оберіть дату й час.",
+      alert_couldnt_load_reminders: "Не вдалося завантажити нагадування. Спробуйте ще раз.",
+      alert_couldnt_load_chats: "Не вдалося завантажити чати.",
+      alert_couldnt_save: "Не вдалося зберегти нагадування.",
+      alert_couldnt_delete: "Не вдалося видалити нагадування.",
+      alert_couldnt_upload: "Не вдалося завантажити зображення.",
+      alert_image_too_large: "Зображення все ще завелике після стиснення.",
+      alert_enter_text_test: "Спочатку введіть текст або додайте фото.",
+      alert_choose_destination_test: "Спочатку оберіть призначення.",
+      test_sent: "Тестове повідомлення надіслано.",
+      couldnt_send_test: "Не вдалося надіслати тестове повідомлення.",
+      confirm_delete: "Видалити це нагадування?",
+      today: "Сьогодні",
+      tomorrow: "Завтра",
+      months: ["Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"],
+      until_date: "до {date}",
+      pool_badge: "Пул · {n}",
+      snooze_badge: "Відкладення",
+      tracked_badge: "Відстежується",
+      streak_badge: "Стрік {n}",
+      photo_badge: "Фото",
+      unknown_chat: "Невідомий чат",
+      channel_prefix: "Канал: ",
+      group_prefix: "Група: ",
+      photo_only_label: "Фото-нагадування",
+    },
+    hy: {
+      header_sub: "Ստեղծեք հիշեցումներ, որոնք հասնում են ձեզ ուղիղ Telegram-ում։",
+      section_reminders: "Հիշեցումներ",
+      new_reminder: "Նոր հիշեցում",
+      empty_title: "Հիշեցումներ դեռ չկան",
+      empty_sub: "Սեղմեք «Նոր հիշեցում» վերևում՝ առաջինը ստեղծելու համար։",
+      edit_subtitle_new: "Ընտրեք՝ ինչ ասել և երբ ասել։",
+      edit_title_existing: "Հիշեցում",
+      edit_subtitle_existing: "Պլանավորված է {date}",
+      section_photo: "Լուսանկար",
+      no_photo: "Լուսանկար կցված չէ",
+      add_photo: "Ավելացնել լուսանկար",
+      replace_photo: "Փոխարինել լուսանկարը",
+      send_test: "Ուղարկել թեստ",
+      send_test_hint: "«Ուղարկել թեստ»-ը ուղարկում է այս հաղորդագրությունը հենց հիմա՝ առանց պահպանելու։",
+      section_message: "Հաղորդագրություն",
+      text_label: "Տեքստ",
+      text_placeholder_normal: "Ի՞նչ պետք է ասի այս հիշեցումը։",
+      text_placeholder_pool: "Խմեք մի բաժակ ջուր 💧\n\nԺամանակն է մեկ րոպե ձգվել",
+      add_phrase: "+ Ավելացնել արտահայտություն",
+      phrase_placeholder: "Արտահայտություն {n}",
+      pool_title: "Հաղորդագրությունների խումբ",
+      pool_sub: "Ընտրել պատահական արտահայտություն ամեն անգամ",
+      pool_hint: "Առանձնացրեք յուրաքանչյուր արտահայտությունը դատարկ տողով — Echo-ն ամեն անգամ կուղարկի պատահականը։",
+      section_schedule: "Ժամանակացույց",
+      datetime_label: "Ամսաթիվ և ժամ",
+      times_label: "Ժամեր",
+      extra_times_label: "Լրացուցիչ ժամեր",
+      extra_times_hint: "Ընտրովի — յուրաքանչյուր լրացուցիչ ժամ ստեղծում է առանձին միանվագ հիշեցում նույն ամսաթվին։",
+      add_time: "+ Ավելացնել ժամ",
+      repeat_label: "Կրկնություն",
+      seg_once: "Մեկ անգամ",
+      seg_daily: "Ամեն օր",
+      seg_weekly: "Ամեն շաբաթ",
+      seg_yearly: "Ամեն տարի",
+      enddate_label: "Ավարտի ամսաթիվ (ընտրովի)",
+      enddate_hint: "Թողեք դատարկ՝ միշտ կրկնելու համար, կամ ընտրեք ամսաթիվ՝ դադարեցնելու համար։",
+      section_destination: "Ուղղություն",
+      route_label: "Ուղարկել",
+      section_buttons: "Կոճակներ",
+      snooze_title: "Հետաձգել",
+      snooze_sub: "Ավելացնում է «Հետաձգել 15 րոպե» կոճակ հաղորդագրության տակ",
+      tracker_title: "Հետևող",
+      tracker_sub_default: "Ավելացնում է «Կատարված» կոճակ և հաշվում է շարք",
+      tracker_sub_streak: "Ավելացնում է «Կատարված» կոճակ · ընթացիկ շարք՝ {n}",
+      delete_hint: "Հիշեցումը ջնջելը անշրջելի է։",
+      delete_btn: "Ջնջել հիշեցումը",
+      save_btn: "Պահպանել",
+      sending_label: "Ուղարկվում է…",
+      alert_enter_text_or_photo: "Մուտքագրեք տեքստ կամ կցեք լուսանկար։",
+      alert_pool_min: "Ավելացրեք առնվազն երկու արտահայտություն խմբի համար։",
+      alert_choose_route: "Ընտրեք, թե ուր ուղարկել հիշեցումը։",
+      alert_choose_time: "Ընտրեք ժամ։",
+      alert_choose_datetime: "Ընտրեք ամսաթիվ և ժամ։",
+      alert_couldnt_load_reminders: "Չհաջողվեց բեռնել հիշեցումները։ Փորձեք կրկին։",
+      alert_couldnt_load_chats: "Չհաջողվեց բեռնել զրույցները։",
+      alert_couldnt_save: "Չհաջողվեց պահպանել հիշեցումը։",
+      alert_couldnt_delete: "Չհաջողվեց ջնջել հիշեցումը։",
+      alert_couldnt_upload: "Չհաջողվեց վերբեռնել նկարը։",
+      alert_image_too_large: "Նկարը դեռ շատ մեծ է սեղմումից հետո։",
+      alert_enter_text_test: "Նախ մուտքագրեք տեքստ կամ կցեք լուսանկար։",
+      alert_choose_destination_test: "Նախ ընտրեք ուղղությունը։",
+      test_sent: "Թեստային հաղորդագրությունն ուղարկվեց։",
+      couldnt_send_test: "Չհաջողվեց ուղարկել թեստային հաղորդագրությունը։",
+      confirm_delete: "Ջնջե՞լ այս հիշեցումը։",
+      today: "Այսօր",
+      tomorrow: "Վաղը",
+      months: ["Հուն","Փետ","Մար","Ապր","Մայ","Հուն","Հուլ","Օգս","Սեպ","Հոկ","Նոյ","Դեկ"],
+      until_date: "մինչև {date}",
+      pool_badge: "Խումբ · {n}",
+      snooze_badge: "Հետաձգում",
+      tracked_badge: "Հետևվում է",
+      streak_badge: "Շարք {n}",
+      photo_badge: "Լուսանկար",
+      unknown_chat: "Անհայտ զրույց",
+      channel_prefix: "Ալիք՝ ",
+      group_prefix: "Խումբ՝ ",
+      photo_only_label: "Լուսանկարով հիշեցում",
+    },
+  };
+  let currentLang = "en";
+
+  function t(key, vars) {
+    let str = (I18N[currentLang] && I18N[currentLang][key]) ?? I18N.en[key] ?? key;
+    if (vars) for (const k in vars) str = str.replace(`{${k}}`, vars[k]);
+    return str;
+  }
+
+  function applyTranslations() {
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  }
+
+  async function loadLanguage() {
+    try {
+      const me = await api("/me");
+      if (me && me.language && I18N[me.language]) currentLang = me.language;
+    } catch (e) { console.error(e); }
+    applyTranslations();
+  }
 
   const ICONS = {
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
@@ -350,9 +613,11 @@
   const poolHint = document.getElementById("pool-hint");
   const poolVariantsContainer = document.getElementById("pool-variants");
   const btnAddVariant = document.getElementById("btn-add-variant");
-  
+
   const fieldDatetime = document.getElementById("field-datetime");
   const fieldDailyTimes = document.getElementById("field-daily-times");
+  const dailyTimesLabel = document.getElementById("daily-times-label");
+  const extraTimesHint = document.getElementById("extra-times-hint");
   const dailyTimesList = document.getElementById("daily-times-list");
   const btnAddTime = document.getElementById("btn-add-time");
   const fDate = document.getElementById("f-date");
@@ -370,9 +635,6 @@
   const uploadBtnLabel = document.getElementById("upload-btn-label");
   const mediaThumbnails = document.getElementById("media-thumbnails");
   const mediaEmpty = document.getElementById("media-empty");
-
-  const TEXT_PLACEHOLDER_NORMAL = "What should this reminder say?";
-  const TEXT_PLACEHOLDER_POOL = "Drink a glass of water 💧\n\nTime to stretch for a minute";
 
   let currentReminderId = null;
   let currentMediaUrl = null;
@@ -439,16 +701,19 @@
     }
   }
 
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const RECURRENCE_LABELS = { daily: "Daily", weekly: "Weekly", yearly: "Yearly" };
+  function recurrenceLabel(rec) {
+    const map = { daily: t("seg_daily"), weekly: t("seg_weekly"), yearly: t("seg_yearly") };
+    return map[rec] || rec;
+  }
 
   function formatDateTime(iso) {
     const d = new Date(iso), now = new Date(), tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
     const hh = String(d.getHours()).padStart(2, "0"), mm = String(d.getMinutes()).padStart(2, "0"), time = `${hh}:${mm}`;
-    if (d.toDateString() === now.toDateString()) return `Today, ${time}`;
-    if (d.toDateString() === tomorrow.toDateString()) return `Tomorrow, ${time}`;
-    return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${time}`;
+    if (d.toDateString() === now.toDateString()) return `${t("today")}, ${time}`;
+    if (d.toDateString() === tomorrow.toDateString()) return `${t("tomorrow")}, ${time}`;
+    const months = (I18N[currentLang] && I18N[currentLang].months) || I18N.en.months;
+    return `${d.getDate()} ${months[d.getMonth()]}, ${time}`;
   }
 
   // Renders an ISO datetime into the "YYYY-MM-DDTHH:mm" format the native datetime-local input expects.
@@ -494,17 +759,19 @@
     const input = document.createElement("input"); input.type = "time"; input.value = value || "09:00";
     const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
     removeBtn.addEventListener("click", () => {
-      if (dailyTimesList.children.length <= 1) return;
+      // Daily recurrence always needs at least one time slot; a "Once" reminder's extra
+      // times are optional and can be removed down to zero (the main date/time field covers that case).
+      if (currentRecurrence === "daily" && dailyTimesList.children.length <= 1) return;
       row.remove(); markDirty();
     });
     row.appendChild(input); row.appendChild(removeBtn); dailyTimesList.appendChild(row);
     return input;
   }
 
-  function renderDailyTimes(times) {
+  function renderDailyTimes(times, allowEmpty) {
     dailyTimesList.innerHTML = "";
-    const list = (times && times.length) ? times : ["09:00"];
-    list.forEach((t) => addDailyTimeRow(t));
+    const list = (times && times.length) ? times : (allowEmpty ? [] : ["09:00"]);
+    list.forEach((timeStr) => addDailyTimeRow(timeStr));
   }
 
   function getDailyTimes() {
@@ -514,9 +781,12 @@
   btnAddTime.addEventListener("click", () => { addDailyTimeRow("09:00").focus(); markDirty(); });
   dailyTimesList.addEventListener("change", markDirty);
 
-  function chatOptionLabel(chat) { return chat.chat_type === "private" ? chat.title : `${chat.chat_type === "channel" ? "Channel" : "Group"}: ${chat.title}`; }
+  function chatOptionLabel(chat) {
+    if (chat.chat_type === "private") return chat.title;
+    return `${chat.chat_type === "channel" ? t("channel_prefix") : t("group_prefix")}${chat.title}`;
+  }
   function escapeHtml(str) { const div = document.createElement("div"); div.textContent = str; return div.innerHTML; }
-  
+
   function poolVariants(text) { return (text || "").split("\n\n").map((s) => s.trim()).filter(Boolean); }
 
   async function renderList() {
@@ -527,7 +797,7 @@
       console.error(e);
       listContainer.innerHTML = "";
       emptyState.style.display = "block";
-      tg?.showAlert("Couldn't load your reminders. Please try again.");
+      tg?.showAlert(t("alert_couldnt_load_reminders"));
       return;
     }
     chatsCache = chats; chatsById = new Map(chats.map(c => [String(c.chat_id), c]));
@@ -535,19 +805,21 @@
     emptyState.style.display = "none";
     listContainer.innerHTML = "";
     reminders.forEach((r) => {
-      const chat = chatsById.get(String(r.chat_id)), routeLabel = chat ? chatOptionLabel(chat) : "Unknown chat";
+      const chat = chatsById.get(String(r.chat_id)), routeLabel = chat ? chatOptionLabel(chat) : t("unknown_chat");
       const badges = [];
       if (r.recurrence && r.recurrence !== "none") {
-        let recurrenceText = RECURRENCE_LABELS[r.recurrence] || r.recurrence;
+        let recurrenceText = recurrenceLabel(r.recurrence);
         if (r.recurrence === "daily" && r.daily_times && r.daily_times.length) recurrenceText += ` (${r.daily_times.join(", ")})`;
-        if (r.end_date) recurrenceText += ` until ${formatDateTime(r.end_date).replace(/, .*/, "")}`;
-        badges.push(`<span class="badge">${ICONS.repeat}${recurrenceText}</span>`);
+        if (r.end_date) recurrenceText += ` ${t("until_date", { date: formatDateTime(r.end_date).replace(/, .*/, "") })}`;
+        badges.push(`<span class="badge">${ICONS.repeat}${escapeHtml(recurrenceText)}</span>`);
       }
-      if (r.use_message_pool) { const count = poolVariants(r.text).length; badges.push(`<span class="badge">${ICONS.shuffle}Pool · ${count}</span>`); }
-      if (r.snooze_enabled) badges.push(`<span class="badge">${ICONS.clock}Snooze</span>`);
-      if (r.tracker_enabled) badges.push(`<span class="badge">${ICONS.flame}${r.streak_count > 0 ? `Streak ${r.streak_count}` : "Tracked"}</span>`);
-      if (r.media_url) badges.push(`<span class="badge">${ICONS.image}Photo</span>`);
-      const displayText = r.use_message_pool ? (poolVariants(r.text)[0] || r.text) : r.text;
+      if (r.use_message_pool) { const count = poolVariants(r.text).length; badges.push(`<span class="badge">${ICONS.shuffle}${escapeHtml(t("pool_badge", { n: count }))}</span>`); }
+      if (r.snooze_enabled) badges.push(`<span class="badge">${ICONS.clock}${t("snooze_badge")}</span>`);
+      if (r.tracker_enabled) badges.push(`<span class="badge">${ICONS.flame}${escapeHtml(r.streak_count > 0 ? t("streak_badge", { n: r.streak_count }) : t("tracked_badge"))}</span>`);
+      if (r.media_url) badges.push(`<span class="badge">${ICONS.image}${t("photo_badge")}</span>`);
+      const displayText = r.text
+        ? (r.use_message_pool ? (poolVariants(r.text)[0] || r.text) : r.text)
+        : `📷 ${t("photo_only_label")}`;
       const row = document.createElement("div"); row.className = "list-row"; row.dataset.id = r.id;
       row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
       row.addEventListener("click", () => openEditScreen(r));
@@ -561,7 +833,7 @@
 
   function renderMediaThumbnails() {
     mediaThumbnails.innerHTML = "";
-    uploadBtnLabel.textContent = currentMediaUrl ? "Replace photo" : "Add photo";
+    uploadBtnLabel.textContent = currentMediaUrl ? t("replace_photo") : t("add_photo");
     if (!currentMediaUrl) { mediaThumbnails.style.display = "none"; mediaEmpty.style.display = "flex"; return; }
     mediaThumbnails.style.display = "flex"; mediaEmpty.style.display = "none";
     const thumb = document.createElement("div"); thumb.className = "thumb";
@@ -647,7 +919,7 @@
       }
     } catch (e) {
       console.error(e);
-      tg?.showAlert("Couldn't upload the image.");
+      tg?.showAlert(t("alert_couldnt_upload"));
     } finally {
       btnUploadImage.disabled = false; fMediaFile.value = "";
     }
@@ -662,7 +934,7 @@
 
   function addVariantRow(value, index) {
     const row = document.createElement("div"); row.className = "pool-variant-row";
-    const textarea = document.createElement("textarea"); textarea.rows = 1; textarea.placeholder = `Phrase ${index + 1}`; textarea.value = value;
+    const textarea = document.createElement("textarea"); textarea.rows = 1; textarea.placeholder = t("phrase_placeholder", { n: index + 1 }); textarea.value = value;
     textarea.addEventListener("input", syncPoolVariantsToText);
     const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
     removeBtn.addEventListener("click", () => { row.remove(); syncPoolVariantsToText(); markDirty(); });
@@ -685,15 +957,28 @@
     poolVariantsContainer.style.display = enabled ? "block" : "none";
     btnAddVariant.style.display = enabled ? "inline-flex" : "none";
     poolHint.style.display = enabled ? "block" : "none";
+    fText.placeholder = enabled ? t("text_placeholder_pool") : t("text_placeholder_normal");
     if (enabled) renderPoolVariants();
   }
   fPool.addEventListener("change", () => { updatePoolUI(); markDirty(); });
 
   function updateScheduleUI() {
-    const isDaily = currentRecurrence === "daily", isRecurring = currentRecurrence !== "none";
+    const isDaily = currentRecurrence === "daily";
+    // A brand-new "Once" reminder can also carry extra times (each becomes its own
+    // one-off row on save) - but that only makes sense while creating, not editing an
+    // already-saved single reminder.
+    const isOnceNew = currentRecurrence === "none" && currentReminderId === null;
+    const isRecurring = currentRecurrence !== "none";
+    const showTimesList = isDaily || isOnceNew;
     fieldDatetime.style.display = isDaily ? "none" : "block";
-    fieldDailyTimes.style.display = isDaily ? "block" : "none";
-    if (isDaily && dailyTimesList.children.length === 0) renderDailyTimes(["09:00"]);
+    fieldDailyTimes.style.display = showTimesList ? "block" : "none";
+    extraTimesHint.style.display = isOnceNew ? "block" : "none";
+    if (dailyTimesLabel) dailyTimesLabel.textContent = isDaily ? t("times_label") : t("extra_times_label");
+    if (showTimesList) {
+      if (dailyTimesList.children.length === 0) renderDailyTimes(isDaily ? ["09:00"] : [], !isDaily);
+    } else {
+      dailyTimesList.innerHTML = "";
+    }
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
     if (!isRecurring) fEndDate.value = "";
@@ -724,15 +1009,15 @@
   async function openCreateScreen() {
     currentReminderId = null; currentMediaUrl = null; currentMediaMessageId = null; isDirty = true;
     savedMediaUrl = null; savedMediaMessageId = null; pendingDeleteUrl = null; pendingDeleteMessageId = null;
-    editTitle.textContent = "New reminder"; editSubtitle.textContent = "Choose what to say and when to say it.";
-    dangerZone.style.display = "none"; trackerSub.textContent = 'Adds a "Done" button and counts a streak';
+    editTitle.textContent = t("new_reminder"); editSubtitle.textContent = t("edit_subtitle_new");
+    dangerZone.style.display = "none"; trackerSub.textContent = t("tracker_sub_default");
     fText.value = ""; fPool.checked = false; updatePoolUI();
     const soon = new Date(Date.now() + 60 * 60 * 1000);
-    fDate.value = toWheelDatetimeValue(soon.toISOString()); renderDailyTimes(["09:00"]); fEndDate.value = "";
+    fDate.value = toWheelDatetimeValue(soon.toISOString()); dailyTimesList.innerHTML = ""; fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
-      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert("Couldn't load your chats."); }
+      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert(t("alert_couldnt_load_chats")); }
     }
     await populateRoutes(); showEditScreen();
   }
@@ -742,9 +1027,9 @@
     currentMediaMessageId = reminder.media_message_id || null; isDirty = false;
     savedMediaUrl = currentMediaUrl; savedMediaMessageId = currentMediaMessageId;
     pendingDeleteUrl = null; pendingDeleteMessageId = null;
-    editTitle.textContent = "Reminder"; editSubtitle.textContent = `Scheduled for ${formatDateTime(reminder.run_date)}`;
-    dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? `Adds a "Done" button · current streak: ${reminder.streak_count}` : 'Adds a "Done" button and counts a streak';
-    fText.value = reminder.text; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
+    editTitle.textContent = t("edit_title_existing"); editSubtitle.textContent = t("edit_subtitle_existing", { date: formatDateTime(reminder.run_date) });
+    dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? t("tracker_sub_streak", { n: reminder.streak_count }) : t("tracker_sub_default");
+    fText.value = reminder.text || ""; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
     fDate.value = toWheelDatetimeValue(reminder.run_date);
     renderDailyTimes(reminder.daily_times && reminder.daily_times.length ? reminder.daily_times : [toTimeValue(reminder.run_date)]);
     fEndDate.value = toDateInputValue(reminder.end_date);
@@ -752,14 +1037,14 @@
     setRecurrenceControl(reminder.recurrence || "none");
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
-      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert("Couldn't load your chats."); }
+      try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert(t("alert_couldnt_load_chats")); }
     }
     await populateRoutes(reminder.chat_id); showEditScreen();
   }
 
   function showEditScreen() {
     listScreen.style.display = "none"; editScreen.style.display = "block";
-    tg?.BackButton.show(); tg?.MainButton.setText("Save");
+    tg?.BackButton.show(); tg?.MainButton.setText(t("save_btn"));
     if (isDirty) tg?.MainButton.show(); else tg?.MainButton.hide();
   }
   function showListScreen(skipRender) {
@@ -769,18 +1054,25 @@
   }
 
   async function saveReminder() {
-    if (!fText.value.trim()) return tg?.showAlert("Please enter the reminder text.");
-    if (fPool.checked && poolVariants(fText.value).length < 2) return tg?.showAlert("Add at least two phrases to use a message pool.");
-    if (!fRoute.value) return tg?.showAlert("Please choose where to send this reminder.");
+    const hasMedia = !!currentMediaUrl;
+    if (!fText.value.trim() && !hasMedia) return tg?.showAlert(t("alert_enter_text_or_photo"));
+    if (fPool.checked && poolVariants(fText.value).length < 2) return tg?.showAlert(t("alert_pool_min"));
+    if (!fRoute.value) return tg?.showAlert(t("alert_choose_route"));
     let runDateIso;
-    let dailyTimes = null;
+    let dailyTimesPayload = null;
     if (currentRecurrence === "daily") {
-      dailyTimes = getDailyTimes();
-      if (dailyTimes.length === 0) return tg?.showAlert("Please choose a time.");
-      runDateIso = nextDailyRunDate(dailyTimes).toISOString();
+      dailyTimesPayload = getDailyTimes();
+      if (dailyTimesPayload.length === 0) return tg?.showAlert(t("alert_choose_time"));
+      runDateIso = nextDailyRunDate(dailyTimesPayload).toISOString();
     } else {
-      if (!fDate.value) return tg?.showAlert("Please choose a date and time.");
+      if (!fDate.value) return tg?.showAlert(t("alert_choose_datetime"));
       runDateIso = parseWheelDateTime(fDate.value).toISOString();
+      if (currentRecurrence === "none" && currentReminderId === null) {
+        // Extra times for a brand-new "Once" reminder - the backend turns these into
+        // additional independent one-off rows on the same calendar date.
+        const extra = getDailyTimes();
+        if (extra.length) dailyTimesPayload = extra;
+      }
     }
     const isRecurring = currentRecurrence !== "none";
     const endDateIso = isRecurring && fEndDate.value ? new Date(`${fEndDate.value}T23:59:59`).toISOString() : null;
@@ -788,7 +1080,7 @@
       chat_id: Number(fRoute.value), text: fText.value.trim(), run_date: runDateIso,
       media_url: currentMediaUrl || null, media_message_id: currentMediaMessageId || null,
       snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
-      end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimes,
+      end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
     };
     const savePromise = currentReminderId ? updateReminder(currentReminderId, payload) : createReminder(payload);
     isDirty = false;
@@ -803,13 +1095,13 @@
       }
       renderList();
     }).catch((e) => {
-      console.error(e); tg?.showAlert("Couldn't save this reminder."); renderList();
+      console.error(e); tg?.showAlert(t("alert_couldnt_save")); renderList();
     });
   }
 
   async function handleDelete() {
     if (currentReminderId === null) return;
-    tg?.showConfirm("Delete this reminder?", async (confirmed) => {
+    tg?.showConfirm(t("confirm_delete"), async (confirmed) => {
       if (!confirmed) return;
       const idToDelete = currentReminderId;
       const row = listContainer.querySelector(`[data-id="${idToDelete}"]`);
@@ -818,19 +1110,19 @@
       isDirty = false;
       showListScreen(true);
       try { await deleteReminderApi(idToDelete); }
-      catch (e) { console.error(e); tg?.showAlert("Couldn't delete this reminder."); }
+      catch (e) { console.error(e); tg?.showAlert(t("alert_couldnt_delete")); }
       finally { renderList(); }
     });
   }
 
   async function handleSendTest() {
-    if (!fText.value.trim()) return tg?.showAlert("Please enter the reminder text first.");
-    if (!fRoute.value) return tg?.showAlert("Please choose a destination first.");
-    btnSendTest.disabled = true; const originalLabel = btnSendTest.textContent; btnSendTest.textContent = "Sending…";
+    if (!fText.value.trim() && !currentMediaUrl) return tg?.showAlert(t("alert_enter_text_test"));
+    if (!fRoute.value) return tg?.showAlert(t("alert_choose_destination_test"));
+    btnSendTest.disabled = true; const originalLabel = btnSendTest.textContent; btnSendTest.textContent = t("sending_label");
     try {
       await sendTestMessage({ chat_id: Number(fRoute.value), text: fText.value.trim(), media_url: currentMediaUrl || null, use_message_pool: fPool.checked, snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked });
-      tg?.HapticFeedback?.notificationOccurred("success"); tg?.showAlert("Test message sent.");
-    } catch (e) { console.error(e); tg?.showAlert("Couldn't send the test message."); } finally { btnSendTest.disabled = false; btnSendTest.textContent = originalLabel; }
+      tg?.HapticFeedback?.notificationOccurred("success"); tg?.showAlert(t("test_sent"));
+    } catch (e) { console.error(e); tg?.showAlert(t("couldnt_send_test")); } finally { btnSendTest.disabled = false; btnSendTest.textContent = originalLabel; }
   }
 
   fText.addEventListener("input", markDirty);
@@ -853,7 +1145,8 @@
   btnDelete.addEventListener("click", handleDelete); btnSendTest.addEventListener("click", handleSendTest);
   tg?.BackButton.onClick(handleCancelEdit); tg?.MainButton.onClick(saveReminder);
 
-  renderList();
+  loadLanguage().then(renderList);
 </script>
+
 </body>
 </html>

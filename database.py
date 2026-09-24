@@ -225,6 +225,13 @@ async def get_chat(chat_id: int) -> Optional[dict]:
     return _row_to_dict(row)
 
 
+async def delete_chat(chat_id: int) -> None:
+    """Drops a routing destination (e.g. the bot was removed from a group/channel).
+    Reminders pointed at it are removed too via the chats->reminders ON DELETE CASCADE."""
+    pool = await get_pool()
+    await pool.execute("DELETE FROM chats WHERE chat_id = $1", chat_id)
+
+
 async def create_reminder(
     user_id: int, chat_id: int, text: str, run_date: str, media_url: Optional[str] = None,
     media_message_id: Optional[int] = None,
@@ -247,6 +254,52 @@ async def create_reminder(
         utcnow().isoformat(),
     )
     return new_id
+
+
+async def create_reminders_batch(
+    user_id: int, chat_id: int, text: str, run_dates: list[str], media_url: Optional[str] = None,
+    media_message_id: Optional[int] = None, snooze_enabled: bool = False, tracker_enabled: bool = False,
+    use_message_pool: bool = False,
+) -> list[int]:
+    """Creates one recurrence='none' row per run_date in a single transaction. Used when a
+    "Once" reminder is scheduled with several times - each becomes its own independent
+    one-off row so the scheduler's normal due-reminder logic needs no changes."""
+    pool = await get_pool()
+    ids: list[int] = []
+    created_at = utcnow().isoformat()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for run_date in run_dates:
+                new_id = await conn.fetchval(
+                    """
+                    INSERT INTO reminders
+                        (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence,
+                         end_date, use_message_pool, snooze_enabled, tracker_enabled, daily_times, created_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, 'none', NULL, $7, $8, $9, NULL, $10)
+                    RETURNING id
+                    """,
+                    user_id, chat_id, text, media_url, media_message_id, run_date,
+                    int(use_message_pool), int(snooze_enabled), int(tracker_enabled), created_at,
+                )
+                ids.append(new_id)
+    return ids
+
+
+async def media_still_referenced(media_message_id: int, exclude_id: Optional[int] = None) -> bool:
+    """True if some OTHER reminder still points at this channel media (multi-time "Once"
+    reminders can share one photo across several rows), so callers know it's unsafe to
+    delete the channel post yet."""
+    pool = await get_pool()
+    if exclude_id is not None:
+        count = await pool.fetchval(
+            "SELECT COUNT(*) FROM reminders WHERE media_message_id = $1 AND id != $2",
+            media_message_id, exclude_id,
+        )
+    else:
+        count = await pool.fetchval(
+            "SELECT COUNT(*) FROM reminders WHERE media_message_id = $1", media_message_id
+        )
+    return bool(count)
 
 
 async def get_reminders_by_user(user_id: int) -> list[dict]:
