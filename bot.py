@@ -37,53 +37,81 @@ router = Router()
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
         "welcome": (
-            "Hi! I'm Echo — I help you not forget what matters.\n\n"
-            "• Personal reminders, one-time or recurring (daily/weekly/monthly)\n"
-            "• Add me to a group or channel as admin to schedule messages there too\n"
-            "• Mix several phrases into a message pool for variety\n\n"
-            "Tap the button below to open your reminders."
+            "Hey, I'm Echo 👋 Think of me as a little personal assistant who remembers things so you don't have to.\n\n"
+            "Tell me what to remind you about and when — just once, or on repeat every day, week or year — "
+            "and I'll nudge you right on time. Got a group or a channel? Add me there as an admin and I can "
+            "schedule posts for your community too.\n\n"
+            "Want your habits to feel fresh? Turn on the Message Pool and I'll pick a random phrase from your list "
+            "each time, so reminders never sound stale. You can also add Snooze and Tracker buttons to any reminder "
+            "— I'll even keep count of your streak.\n\n"
+            "Tap the button below to set up your first reminder."
         ),
         "help": (
-            "<b>How Echo works</b>\n\n"
-            "1. Open the app to create a reminder\n"
-            "2. Add me to a group or channel as admin to route reminders there too\n"
-            "3. Use the Tracker (Done) and Snooze buttons on messages to stay on track"
+            "<b>A quick tour of Echo</b>\n\n"
+            "Open the app with the button below and create a reminder — one-off or repeating "
+            "(daily, weekly or yearly). Pick a time, or a few, and I'll take it from there.\n\n"
+            "Want me to post in a group or channel? Add me there as an admin and it will show up as a destination "
+            "in the app, so you can schedule community posts ahead of time.\n\n"
+            "To keep things varied, switch on the <b>Message Pool</b>: write a few phrases, separate them with "
+            "a blank line, and I'll send a random one each time — perfect for habits you don't want to feel repetitive.\n\n"
+            "And if you like a bit of accountability, add <b>Snooze</b> to push a reminder back for a while, "
+            "or the <b>Tracker</b> to mark it done and build a streak.\n\n"
+            "Lost the app? Just send /app."
         ),
         "app": "Your reminders are here:",
         "open_echo": "Open Echo",
     },
     "uk": {
         "welcome": (
-            "Привіт! Я Echo — допоможу не забувати важливе.\n\n"
-            "• Особисті нагадування, одноразові чи повторювані (щодня/щотижня/щомісяця)\n"
-            "• Додай мене в групу чи канал адміном — і плануй повідомлення туди теж\n"
-            "• Об'єднуй кілька варіантів тексту в пул повідомлень\n\n"
-            "Тисни кнопку нижче, щоб відкрити список нагадувань."
+            "Привіт, я Echo 👋 Вважай мене своїм маленьким персональним помічником, який пам'ятає замість тебе.\n\n"
+            "Просто скажи, про що і коли нагадати — один раз або з повтором щодня, щотижня чи щороку — "
+            "і я обов'язково штовхну тебе вчасно. Маєш групу чи канал? Додай мене туди адміном, і я зможу "
+            "планувати публікації для твоєї спільноти.\n\n"
+            "Хочеш, щоб звички не набридали? Увімкни Пул повідомлень — щоразу я обиратиму випадкову фразу зі "
+            "списку, тож нагадування не звучатимуть однаково. А ще до будь-якого нагадування можна додати кнопки "
+            "«Відкласти» та Трекер — я навіть рахуватиму твій стрік.\n\n"
+            "Тисни кнопку нижче й створюй перше нагадування."
         ),
         "help": (
-            "<b>Як працює Echo</b>\n\n"
-            "1. Відкрий застосунок, щоб створити нагадування\n"
-            "2. Додай мене в групу чи канал адміном, щоб надсилати нагадування і туди\n"
-            "3. Використовуй кнопки «Виконано» і «Відкласти» під повідомленнями"
+            "<b>Коротко про Echo</b>\n\n"
+            "Відкрий застосунок кнопкою нижче й створи нагадування — одноразове чи повторюване "
+            "(щодня, щотижня або щороку). Обери час або кілька — далі я сам.\n\n"
+            "Хочеш, щоб я писав у групу чи канал? Додай мене туди адміном — вони з'являться в застосунку "
+            "як місце призначення, і можна буде планувати публікації для спільноти наперед.\n\n"
+            "Щоб було різноманітніше, увімкни <b>Пул повідомлень</b>: напиши кілька фраз, розділи їх порожнім "
+            "рядком — і я щоразу надсилатиму випадкову. Ідеально для звичок, які не хочеться робити нудними.\n\n"
+            "А якщо потрібна невелика підтримка — додай <b>«Відкласти»</b>, щоб перенести нагадування на потім, "
+            "або <b>Трекер</b>, щоб позначати виконане й накопичувати стрік.\n\n"
+            "Загубив застосунок? Просто надішли /app."
         ),
         "app": "Твої нагадування тут:",
         "open_echo": "Відкрити Echo",
     },
     "hy": {
         "welcome": (
-            "Բարև, ես Echo-ն եմ — կօգնեմ չմոռանալ կարևորը։\n\n"
-            "• Անձնական հիշեցումներ՝ մեկանգամյա կամ կրկնվող (ամեն օր/շաբաթ/ամիս)\n"
-            "• Ավելացրու ինձ խմբում կամ ալիքում որպես ադմին՝ այնտեղ էլ հաղորդագրություններ պլանավորելու համար\n"
-            "• Միավորիր մի քանի տարբերակ մեկ հաղորդագրությունների փաթեթում\n\n"
-            "Սեղմեք ներքևի կոճակը՝ ձեր հիշեցումները բացելու համար։"
+            "Բարև, ես Echo-ն եմ 👋 Պատկերացրու ինձ որպես քո փոքրիկ անձնական օգնական, որը հիշում է քո փոխարեն։\n\n"
+            "Պարզապես ասա՝ ինչի մասին և երբ հիշեցնեմ՝ մեկ անգամ կամ կրկնվող (ամեն օր, շաբաթ կամ տարի), "
+            "և ես ճիշտ ժամանակին կհիշեցնեմ։ Ունե՞ս խումբ կամ ալիք։ Ավելացրու ինձ այնտեղ որպես ադմին, "
+            "և ես կկարողանամ հրապարակումներ պլանավորել քո համայնքի համար։\n\n"
+            "Ուզո՞ւմ ես, որ սովորույթներդ չձանձրացնեն։ Միացրու «Հաղորդագրությունների խումբը»՝ ամեն անգամ ցանկից "
+            "պատահական արտահայտություն կընտրեմ, և հիշեցումները նույնը չեն հնչի։ Ցանկացած հիշեցման կարող ես ավելացնել "
+            "«Հետաձգել» կոճակը և «Հետևողը»՝ ես նույնիսկ քո շարքը կհաշվեմ։\n\n"
+            "Սեղմիր ներքևի կոճակը և ստեղծիր քո առաջին հիշեցումը։"
         ),
         "help": (
-            "<b>Ինչպես աշխատել Echo-ի հետ</b>\n\n"
-            "1. Բացիր հավելվածը՝ հիշեցում ստեղծելու համար\n"
-            "2. Ավելացրու ինձ խմբում կամ ալիքում որպես ադմին, որպեսզի հիշեցումներ ուղարկվեն նաև այնտեղ\n"
-            "3. Օգտագործիր «Կատարված» և «Հետաձգել» կոճակները հաղորդագրությունների տակ"
+            "<b>Կարճ ծանոթություն Echo-ի հետ</b>\n\n"
+            "Բացիր հավելվածը ներքևի կոճակով և ստեղծիր հիշեցում՝ մեկանգամյա կամ կրկնվող "
+            "(ամեն օր, շաբաթ կամ տարի)։ Ընտրիր մեկ կամ մի քանի ժամ, մնացածը իմ գործն է։\n\n"
+            "Ուզո՞ւմ ես, որ գրեմ խմբում կամ ալիքում։ Ավելացրու ինձ այնտեղ որպես ադմին. այն կհայտնվի հավելվածում "
+            "որպես ուղղություն, և կկարողանաս համայնքի համար հրապարակումներ պլանավորել նախապես։\n\n"
+            "Որպեսզի ամեն ինչ միապաղաղ չլինի, միացրու <b>Հաղորդագրությունների խումբը</b>. գրիր մի քանի արտահայտություն, "
+            "բաժանիր դրանք դատարկ տողով, և ես ամեն անգամ կուղարկեմ պատահականը։ Իդեալական է այն սովորույթների համար, "
+            "որոնք չես ուզում ձանձրալի դարձնել։\n\n"
+            "Իսկ եթե փոքր աջակցություն է պետք, ավելացրու <b>«Հետաձգել»</b>՝ հիշեցումը հետո տեղափոխելու համար, "
+            "կամ <b>Հետևողը</b>՝ կատարվածը նշելու և շարք կուտակելու համար։\n\n"
+            "Հավելվածը կորցրի՞ր։ Պարզապես ուղարկիր /app։"
         ),
-        "app": "Ձեր հիշեցումները այստեղ են՝",
+        "app": "Քո հիշեցումները այստեղ են՝",
         "open_echo": "Բացել Echo-ն",
     },
 }

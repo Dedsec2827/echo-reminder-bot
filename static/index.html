@@ -231,8 +231,8 @@
     <div class="section-label" data-i18n="section_schedule">Schedule</div>
     <div class="form-section">
       <div class="field" id="field-datetime">
-        <label for="f-date" data-i18n="datetime_label">Date &amp; time</label>
-        <input type="datetime-local" id="f-date">
+        <label for="f-date" data-i18n="date_label">Date</label>
+        <input type="date" id="f-date">
       </div>
       <div class="field" id="field-daily-times" style="display:none;">
         <label id="daily-times-label">Times</label>
@@ -346,10 +346,10 @@
       pool_sub: "Pick one phrase at random on every send",
       pool_hint: "Separate each phrase with a blank line — Echo will send a random one every time this fires.",
       section_schedule: "Schedule",
-      datetime_label: "Date & time",
+      date_label: "Date",
+      time_label: "Time",
       times_label: "Times",
-      extra_times_label: "Additional times",
-      extra_times_hint: "Optional — each extra time creates its own one-time reminder on the same date.",
+      extra_times_hint: "Each time creates its own one-time reminder on this date.",
       add_time: "+ Add time",
       repeat_label: "Repeat",
       seg_once: "Once",
@@ -375,7 +375,8 @@
       alert_pool_min: "Add at least two phrases to use a message pool.",
       alert_choose_route: "Please choose where to send this reminder.",
       alert_choose_time: "Please choose a time.",
-      alert_choose_datetime: "Please choose a date and time.",
+      alert_choose_date: "Please choose a date.",
+      alert_past_time: "That time has already passed — please pick a later one.",
       alert_couldnt_load_reminders: "Couldn't load your reminders. Please try again.",
       alert_couldnt_load_chats: "Couldn't load your chats.",
       alert_couldnt_save: "Couldn't save this reminder.",
@@ -426,10 +427,10 @@
       pool_sub: "Обирати випадкову фразу щоразу",
       pool_hint: "Розділяйте кожну фразу порожнім рядком — Echo надсилатиме випадкову щоразу.",
       section_schedule: "Розклад",
-      datetime_label: "Дата й час",
+      date_label: "Дата",
+      time_label: "Час",
       times_label: "Час",
-      extra_times_label: "Додатковий час",
-      extra_times_hint: "Необов’язково — кожен додатковий час створює окреме одноразове нагадування на ту саму дату.",
+      extra_times_hint: "Кожен час створює окреме одноразове нагадування на цю дату.",
       add_time: "+ Додати час",
       repeat_label: "Повтор",
       seg_once: "Один раз",
@@ -455,7 +456,8 @@
       alert_pool_min: "Додайте щонайменше дві фрази для пулу повідомлень.",
       alert_choose_route: "Оберіть, куди надіслати нагадування.",
       alert_choose_time: "Оберіть час.",
-      alert_choose_datetime: "Оберіть дату й час.",
+      alert_choose_date: "Оберіть дату.",
+      alert_past_time: "Цей час уже минув — оберіть пізніший.",
       alert_couldnt_load_reminders: "Не вдалося завантажити нагадування. Спробуйте ще раз.",
       alert_couldnt_load_chats: "Не вдалося завантажити чати.",
       alert_couldnt_save: "Не вдалося зберегти нагадування.",
@@ -506,10 +508,10 @@
       pool_sub: "Ընտրել պատահական արտահայտություն ամեն անգամ",
       pool_hint: "Առանձնացրեք յուրաքանչյուր արտահայտությունը դատարկ տողով — Echo-ն ամեն անգամ կուղարկի պատահականը։",
       section_schedule: "Ժամանակացույց",
-      datetime_label: "Ամսաթիվ և ժամ",
+      date_label: "Ամսաթիվ",
+      time_label: "Ժամ",
       times_label: "Ժամեր",
-      extra_times_label: "Լրացուցիչ ժամեր",
-      extra_times_hint: "Ընտրովի — յուրաքանչյուր լրացուցիչ ժամ ստեղծում է առանձին միանվագ հիշեցում նույն ամսաթվին։",
+      extra_times_hint: "Յուրաքանչյուր ժամ ստեղծում է առանձին միանվագ հիշեցում այս ամսաթվին։",
       add_time: "+ Ավելացնել ժամ",
       repeat_label: "Կրկնություն",
       seg_once: "Մեկ անգամ",
@@ -535,7 +537,8 @@
       alert_pool_min: "Ավելացրեք առնվազն երկու արտահայտություն խմբի համար։",
       alert_choose_route: "Ընտրեք, թե ուր ուղարկել հիշեցումը։",
       alert_choose_time: "Ընտրեք ժամ։",
-      alert_choose_datetime: "Ընտրեք ամսաթիվ և ժամ։",
+      alert_choose_date: "Ընտրեք ամսաթիվ։",
+      alert_past_time: "Այս ժամն արդեն անցել է․ ընտրեք ավելի ուշ։",
       alert_couldnt_load_reminders: "Չհաջողվեց բեռնել հիշեցումները։ Փորձեք կրկին։",
       alert_couldnt_load_chats: "Չհաջողվեց բեռնել զրույցները։",
       alert_couldnt_save: "Չհաջողվեց պահպանել հիշեցումը։",
@@ -719,19 +722,20 @@
     return `${d.getDate()} ${months[d.getMonth()]}, ${time}`;
   }
 
-  // Renders an ISO datetime into the "YYYY-MM-DDTHH:mm" format the native datetime-local input expects.
-  function toWheelDatetimeValue(iso) {
-    const d = new Date(iso), pad = n => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  // Parses "YYYY-MM-DDTHH:mm" from the native datetime-local input.
-  function parseWheelDateTime(value) {
-    const [datePart, timePart] = value.split(/[T ]/);
-    const [y, m, d] = datePart.split("-").map(Number);
-    const [hh, mm] = (timePart || "00:00").split(":").map(Number);
+  // Combines a "YYYY-MM-DD" date and an "HH:MM" time into a local Date.
+  function combineDateTime(dateStr, timeStr) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const [hh, mm] = timeStr.split(":").map(Number);
     return new Date(y, m - 1, d, hh, mm, 0, 0);
   }
+
+  // Default slot for new time rows: now + 1 hour, rounded to the nearest 10 minutes (10:03 -> "11:00").
+  function defaultSlot() {
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setMinutes(Math.round(d.getMinutes() / 10) * 10, 0, 0);
+    return d;
+  }
+  function defaultTimeValue() { return toTimeValue(defaultSlot()); }
 
   function toTimeValue(input) {
     const d = input instanceof Date ? input : new Date(input), pad = n => String(n).padStart(2, "0");
@@ -759,29 +763,29 @@
 
   function addDailyTimeRow(value) {
     const row = document.createElement("div"); row.className = "daily-time-row";
-    const input = document.createElement("input"); input.type = "time"; input.value = value || "09:00";
+    const input = document.createElement("input"); input.type = "time"; input.value = value || defaultTimeValue();
     const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
     removeBtn.addEventListener("click", () => {
-      // Daily recurrence always needs at least one time slot; a "Once" reminder's extra
-      // times are optional and can be removed down to zero (the main date/time field covers that case).
-      if (currentRecurrence === "daily" && dailyTimesList.children.length <= 1) return;
+      // Every recurrence needs at least one time slot.
+      if (dailyTimesList.children.length <= 1) return;
       row.remove(); markDirty();
     });
     row.appendChild(input); row.appendChild(removeBtn); dailyTimesList.appendChild(row);
     return input;
   }
 
-  function renderDailyTimes(times, allowEmpty) {
+  function renderDailyTimes(times) {
     dailyTimesList.innerHTML = "";
-    const list = (times && times.length) ? times : (allowEmpty ? [] : ["09:00"]);
+    const list = (times && times.length) ? times : [defaultTimeValue()];
     list.forEach((timeStr) => addDailyTimeRow(timeStr));
   }
 
   function getDailyTimes() {
-    return Array.from(dailyTimesList.querySelectorAll('input[type="time"]')).map((i) => i.value).filter(Boolean).sort();
+    const times = Array.from(dailyTimesList.querySelectorAll('input[type="time"]')).map((i) => i.value).filter(Boolean);
+    return [...new Set(times)].sort();
   }
 
-  btnAddTime.addEventListener("click", () => { addDailyTimeRow("09:00").focus(); markDirty(); });
+  btnAddTime.addEventListener("click", () => { addDailyTimeRow().focus(); markDirty(); });
   dailyTimesList.addEventListener("change", markDirty);
 
   function chatOptionLabel(chat) {
@@ -967,21 +971,20 @@
 
   function updateScheduleUI() {
     const isDaily = currentRecurrence === "daily";
-    // A brand-new "Once" reminder can also carry extra times (each becomes its own
-    // one-off row on save) - but that only makes sense while creating, not editing an
-    // already-saved single reminder.
-    const isOnceNew = currentRecurrence === "none" && currentReminderId === null;
-    const isRecurring = currentRecurrence !== "none";
-    const showTimesList = isDaily || isOnceNew;
+    const isOnce = currentRecurrence === "none";
+    const isRecurring = !isOnce;
+    // Multiple times only make sense for Daily and for a brand-new "Once" reminder (each time becomes
+    // its own one-off row on save). Everything else - including editing a saved single reminder,
+    // and Weekly/Yearly - has exactly one time.
+    const isOnceNew = isOnce && currentReminderId === null;
+    const multiTime = isDaily || isOnceNew;
     fieldDatetime.style.display = isDaily ? "none" : "block";
-    fieldDailyTimes.style.display = showTimesList ? "block" : "none";
+    fieldDailyTimes.style.display = "block";
     extraTimesHint.style.display = isOnceNew ? "block" : "none";
-    if (dailyTimesLabel) dailyTimesLabel.textContent = isDaily ? t("times_label") : t("extra_times_label");
-    if (showTimesList) {
-      if (dailyTimesList.children.length === 0) renderDailyTimes(isDaily ? ["09:00"] : [], !isDaily);
-    } else {
-      dailyTimesList.innerHTML = "";
-    }
+    if (dailyTimesLabel) dailyTimesLabel.textContent = t(multiTime ? "times_label" : "time_label");
+    if (dailyTimesList.children.length === 0) renderDailyTimes([]);
+    if (!multiTime) { while (dailyTimesList.children.length > 1) dailyTimesList.lastElementChild.remove(); }
+    btnAddTime.style.display = multiTime ? "" : "none";
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
     if (!isRecurring) fEndDate.value = "";
@@ -1015,8 +1018,9 @@
     editTitle.textContent = t("new_reminder"); editSubtitle.textContent = t("edit_subtitle_new");
     dangerZone.style.display = "none"; trackerSub.textContent = t("tracker_sub_default");
     fText.value = ""; fPool.checked = false; updatePoolUI();
-    const soon = new Date(Date.now() + 60 * 60 * 1000);
-    fDate.value = toWheelDatetimeValue(soon.toISOString()); dailyTimesList.innerHTML = ""; fEndDate.value = "";
+    // Date and time come from the same slot so a late-evening default rolls over to tomorrow consistently.
+    const slot = defaultSlot();
+    fDate.value = toDateInputValue(slot); renderDailyTimes([toTimeValue(slot)]); fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
@@ -1033,7 +1037,7 @@
     editTitle.textContent = t("edit_title_existing"); editSubtitle.textContent = t("edit_subtitle_existing", { date: formatDateTime(reminder.run_date) });
     dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? t("tracker_sub_streak", { n: reminder.streak_count }) : t("tracker_sub_default");
     fText.value = reminder.text || ""; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
-    fDate.value = toWheelDatetimeValue(reminder.run_date);
+    fDate.value = toDateInputValue(reminder.run_date);
     renderDailyTimes(reminder.daily_times && reminder.daily_times.length ? reminder.daily_times : [toTimeValue(reminder.run_date)]);
     fEndDate.value = toDateInputValue(reminder.end_date);
     fSnooze.checked = !!reminder.snooze_enabled; fTracker.checked = !!reminder.tracker_enabled;
@@ -1061,21 +1065,23 @@
     if (!fText.value.trim() && !hasMedia) return tg?.showAlert(t("alert_enter_text_or_photo"));
     if (fPool.checked && poolVariants(fText.value).length < 2) return tg?.showAlert(t("alert_pool_min"));
     if (!fRoute.value) return tg?.showAlert(t("alert_choose_route"));
+    const times = getDailyTimes();
+    if (times.length === 0) return tg?.showAlert(t("alert_choose_time"));
     let runDateIso;
     let dailyTimesPayload = null;
     if (currentRecurrence === "daily") {
-      dailyTimesPayload = getDailyTimes();
-      if (dailyTimesPayload.length === 0) return tg?.showAlert(t("alert_choose_time"));
-      runDateIso = nextDailyRunDate(dailyTimesPayload).toISOString();
+      dailyTimesPayload = times;
+      runDateIso = nextDailyRunDate(times).toISOString();
     } else {
-      if (!fDate.value) return tg?.showAlert(t("alert_choose_datetime"));
-      runDateIso = parseWheelDateTime(fDate.value).toISOString();
+      if (!fDate.value) return tg?.showAlert(t("alert_choose_date"));
+      const first = combineDateTime(fDate.value, times[0]);
       if (currentRecurrence === "none" && currentReminderId === null) {
-        // Extra times for a brand-new "Once" reminder - the backend turns these into
-        // additional independent one-off rows on the same calendar date.
-        const extra = getDailyTimes();
-        if (extra.length) dailyTimesPayload = extra;
+        if (first <= new Date()) return tg?.showAlert(t("alert_past_time"));
+        // Every time for a brand-new "Once" reminder - the backend combines the date with each
+        // time and creates one independent one-off reminder per time.
+        dailyTimesPayload = times;
       }
+      runDateIso = first.toISOString();
     }
     const isRecurring = currentRecurrence !== "none";
     const endDateIso = isRecurring && fEndDate.value ? new Date(`${fEndDate.value}T23:59:59`).toISOString() : null;
@@ -1084,6 +1090,7 @@
       media_url: currentMediaUrl || null, media_message_id: currentMediaMessageId || null,
       snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
       end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
+      tz_offset_minutes: -new Date(runDateIso).getTimezoneOffset(),
     };
     tg?.MainButton.showProgress();
     tg?.MainButton.setText(t("saving_label"));

@@ -9,6 +9,7 @@ import hmac
 import json
 import logging
 import os
+from datetime import timedelta
 from typing import Literal, Optional
 from urllib.parse import parse_qsl
 
@@ -17,7 +18,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, Header, HTTPException, Path, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import database as db
 
@@ -61,10 +62,13 @@ def _parse_and_verify_init_data(init_data: str) -> dict:
     received_hash = pairs.pop("hash", None)
     if not received_hash:
         raise HTTPException(status_code=401, detail="Init data missing hash")
+    if not BOT_TOKEN:
+        # Fail closed: without a token the signature can't be verified at all.
+        raise HTTPException(status_code=503, detail="Server is not configured")
     data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
     secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
     computed_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-    if BOT_TOKEN and computed_hash != received_hash:
+    if not hmac.compare_digest(computed_hash, received_hash):
         raise HTTPException(status_code=401, detail="Invalid init data signature")
     return pairs
 
@@ -94,6 +98,9 @@ class ReminderIn(BaseModel):
     end_date: Optional[str] = None
     use_message_pool: bool = False
     daily_times: Optional[list[str]] = None
+    # Minutes EAST of UTC for the user's local timezone (JS: -getTimezoneOffset()).
+    # Needed so "HH:MM" strings from the client are combined with the date in local time.
+    tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
 
 
 class ReminderUpdate(BaseModel):
@@ -215,6 +222,34 @@ async def get_media(file_id: str) -> StreamingResponse:
     return StreamingResponse(buf, media_type="image/jpeg")
 
 
+async def _require_own_chat(uid: int, chat_id: int) -> None:
+    chat = await db.get_chat(chat_id)
+    if not chat or chat["owner_id"] != uid:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+
+def _once_run_dates(run_date: str, daily_times: Optional[list[str]], tz_offset_minutes: Optional[int]) -> list[str]:
+    """Turns a "Once" reminder's base date + list of "HH:MM" times into one ISO (UTC) timestamp per time.
+    run_date only supplies the calendar date (in the user's local timezone); the times supply the rest."""
+    if not daily_times:
+        return [run_date]
+    offset = timedelta(minutes=tz_offset_minutes or 0)
+    local_base = db.parse_iso_utc(run_date) + offset
+    run_dates: list[str] = []
+    for time_str in daily_times:
+        try:
+            hh, mm = time_str.split(":")
+            local_dt = local_base.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
+        except (ValueError, AttributeError):
+            continue
+        iso = (local_dt - offset).isoformat()
+        if iso not in run_dates:
+            run_dates.append(iso)
+    if not run_dates:
+        raise HTTPException(status_code=400, detail="No valid times provided")
+    return run_dates
+
+
 @app.post("/api/test-send")
 async def test_send(payload: TestSendIn, x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
     uid = get_current_user_id(x_telegram_init_data)
@@ -237,18 +272,11 @@ async def list_reminders(x_telegram_init_data: Optional[str] = Header(default=No
 @app.post("/api/reminders")
 async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[str] = Header(default=None)) -> dict:
     uid = get_current_user_id(x_telegram_init_data)
-    # For a "Once" reminder, daily_times (if present) carries EXTRA times on the same
-    # calendar date as run_date - split into one independent one-off row per time so the
-    # scheduler's normal due-reminder logic doesn't need to change.
-    if payload.recurrence == "none" and payload.daily_times:
-        base_dt = db.parse_iso_utc(payload.run_date)
-        run_dates = [payload.run_date]
-        for time_str in payload.daily_times:
-            try:
-                hh, mm = time_str.split(":")
-                run_dates.append(base_dt.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0).isoformat())
-            except (ValueError, AttributeError):
-                continue
+    await _require_own_chat(uid, payload.chat_id)
+    # "Once" reminders: daily_times holds ALL the times for the chosen date; run_date only supplies
+    # the date. Each time becomes its own independent one-off row, so the scheduler logic is unchanged.
+    if payload.recurrence == "none":
+        run_dates = _once_run_dates(payload.run_date, payload.daily_times, payload.tz_offset_minutes)
         ids = await db.create_reminders_batch(
             user_id=uid, chat_id=payload.chat_id, text=payload.text, run_dates=run_dates,
             media_url=payload.media_url, media_message_id=payload.media_message_id,
@@ -272,6 +300,7 @@ async def edit_reminder(reminder_id: int, payload: ReminderUpdate, x_telegram_in
     uid = get_current_user_id(x_telegram_init_data)
     reminder = await db.get_reminder(reminder_id)
     if not reminder or reminder["user_id"] != uid: raise HTTPException(status_code=404, detail="Reminder not found")
+    if payload.chat_id is not None: await _require_own_chat(uid, payload.chat_id)
     fields = {k: v for k, v in payload.model_dump(exclude_unset=True).items()}
     if "snooze_enabled" in fields: fields["snooze_enabled"] = int(fields["snooze_enabled"])
     if "tracker_enabled" in fields: fields["tracker_enabled"] = int(fields["tracker_enabled"])
