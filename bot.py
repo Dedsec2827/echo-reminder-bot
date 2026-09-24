@@ -61,6 +61,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "app": "Your reminders:",
         "open_echo": "Open Echo",
+        "expired_alert": "Reminder is no longer active or is a test.",
     },
     "uk": {
         "welcome": (
@@ -90,6 +91,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "app": "Ваші нагадування:",
         "open_echo": "Відкрити Echo",
+        "expired_alert": "Нагадування вже неактивне або є тестовим.",
     },
     "hy": {
         "welcome": (
@@ -119,6 +121,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "app": "Ձեր հիշեցումները՝",
         "open_echo": "Բացել Echo-ն",
+        "expired_alert": "Հիշեցումն այլևս ակտիվ չէ կամ թեստային է։",
     },
 }
 LANGUAGE_PROMPT = "Please choose your language / Будь ласка, оберіть мову / Խնդրում ենք ընտրել լեզուն:"
@@ -241,7 +244,9 @@ async def send_test_message(bot: Bot, chat_id: int, text: str, media_url: Option
 async def on_snooze(callback: CallbackQuery) -> None:
     reminder_id = int(callback.data.split(":", 1)[1])
     reminder = await db.get_reminder(reminder_id)
-    if not reminder: return await callback.answer("Це тестове повідомлення, функція недоступна", show_alert=True)
+    if not reminder:
+        lang = await db.get_user_language(callback.from_user.id)
+        return await callback.answer(t(lang, "expired_alert"), show_alert=True)
     await callback.answer()
     try: await callback.message.edit_reply_markup(reply_markup=_snooze_picker_keyboard(reminder_id))
     except Exception: pass
@@ -251,7 +256,9 @@ async def on_snooze_pick(callback: CallbackQuery) -> None:
     _, reminder_id_str, option_key = callback.data.split(":", 2)
     reminder_id = int(reminder_id_str)
     reminder = await db.get_reminder(reminder_id)
-    if not reminder: return await callback.answer("Це тестове повідомлення", show_alert=True)
+    if not reminder:
+        lang = await db.get_user_language(callback.from_user.id)
+        return await callback.answer(t(lang, "expired_alert"), show_alert=True)
     minutes = SNOOZE_OPTIONS.get(option_key)
     if minutes is None: return await callback.answer()
     new_run_date = await db.snooze_reminder(reminder_id, minutes=minutes)
@@ -264,7 +271,9 @@ async def on_snooze_pick(callback: CallbackQuery) -> None:
 async def on_done(callback: CallbackQuery) -> None:
     reminder_id = int(callback.data.split(":", 1)[1])
     reminder = await db.get_reminder(reminder_id)
-    if not reminder: return await callback.answer("Це тестове повідомлення, функція недоступна", show_alert=True)
+    if not reminder:
+        lang = await db.get_user_language(callback.from_user.id)
+        return await callback.answer(t(lang, "expired_alert"), show_alert=True)
     is_one_time = reminder.get("recurrence", "none") == "none"
     streak = await db.increment_streak(reminder_id, deactivate=False)
     await callback.answer(f"Готово! Стрік: {streak} 🔥")
@@ -279,7 +288,7 @@ def _recurring_reminder_expired(reminder: dict, reference: datetime) -> bool:
     if not end_date: return False
     return reference >= db.parse_iso_utc(end_date)
 
-async def _advance_or_expire_recurring(bot: Bot, reminder: dict) -> None:
+async def _advance_or_expire_recurring(bot: Bot, reminder: dict, has_keyboard: bool) -> None:
     recurrence = reminder["recurrence"]
     if _recurring_reminder_expired(reminder, db.utcnow()):
         await db.mark_reminder_sent(reminder["id"], keep_active=False)
@@ -290,6 +299,11 @@ async def _advance_or_expire_recurring(bot: Bot, reminder: dict) -> None:
     )
     if next_run_date is None:
         # A "Once" reminder with multiple times has fired its last remaining slot.
+        if has_keyboard:
+            # Keep the row so Snooze/Tracker buttons on the sent message still work.
+            await db.mark_reminder_sent(reminder["id"], keep_active=True)
+            logger.info("Reminder %s (one-off, multi-time) exhausted all times; kept for its buttons", reminder["id"])
+            return
         await db.delete_reminder(reminder["id"])
         await _delete_channel_media(bot, reminder)
         logger.info("Reminder %s (one-off, multi-time) exhausted all times; deleted", reminder["id"])
@@ -305,14 +319,14 @@ async def send_reminder(bot: Bot, reminder: dict) -> None:
         await _send_message_with_photo(bot, reminder["chat_id"], message_text, media_url, keyboard)
     except Exception:
         logger.exception("Failed to send reminder %s", reminder["id"])
-        if reminder.get("recurrence", "none") in db.RECURRING_TYPES: await _advance_or_expire_recurring(bot, reminder)
+        if reminder.get("recurrence", "none") in db.RECURRING_TYPES: await _advance_or_expire_recurring(bot, reminder, False)
         else: await db.mark_reminder_sent(reminder["id"], keep_active=False)
         return
 
     recurrence = reminder.get("recurrence", "none")
     try:
         if recurrence in db.RECURRING_TYPES or (recurrence == "none" and reminder.get("daily_times")):
-            await _advance_or_expire_recurring(bot, reminder)
+            await _advance_or_expire_recurring(bot, reminder, bool(keyboard))
         elif keyboard:
             await db.mark_reminder_sent(reminder["id"], keep_active=True)
         else:
