@@ -370,6 +370,7 @@
       delete_btn: "Delete reminder",
       save_btn: "Save",
       sending_label: "Sending…",
+      saving_label: "Saving…",
       alert_enter_text_or_photo: "Please enter some text or attach a photo.",
       alert_pool_min: "Add at least two phrases to use a message pool.",
       alert_choose_route: "Please choose where to send this reminder.",
@@ -449,6 +450,7 @@
       delete_btn: "Видалити нагадування",
       save_btn: "Зберегти",
       sending_label: "Надсилання…",
+      saving_label: "Збереження…",
       alert_enter_text_or_photo: "Введіть текст або додайте фото.",
       alert_pool_min: "Додайте щонайменше дві фрази для пулу повідомлень.",
       alert_choose_route: "Оберіть, куди надіслати нагадування.",
@@ -528,6 +530,7 @@
       delete_btn: "Ջնջել հիշեցումը",
       save_btn: "Պահպանել",
       sending_label: "Ուղարկվում է…",
+      saving_label: "Պահպանվում է…",
       alert_enter_text_or_photo: "Մուտքագրեք տեքստ կամ կցեք լուսանկար։",
       alert_pool_min: "Ավելացրեք առնվազն երկու արտահայտություն խմբի համար։",
       alert_choose_route: "Ընտրեք, թե ուր ուղարկել հիշեցումը։",
@@ -1082,10 +1085,11 @@
       snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
       end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
     };
-    const savePromise = currentReminderId ? updateReminder(currentReminderId, payload) : createReminder(payload);
-    isDirty = false;
-    showListScreen();
-    savePromise.then(() => {
+    tg?.MainButton.showProgress();
+    tg?.MainButton.setText(t("saving_label"));
+    try {
+      if (currentReminderId) await updateReminder(currentReminderId, payload);
+      else await createReminder(payload);
       // Only now is it safe to drop a photo that was replaced/cleared during this edit -
       // the reminder no longer points at it.
       if (pendingDeleteUrl) {
@@ -1093,10 +1097,15 @@
         pendingDeleteUrl = null; pendingDeleteMessageId = null;
         deleteUploadedImage(url, messageId).catch((e) => console.error(e));
       }
-      renderList();
-    }).catch((e) => {
-      console.error(e); tg?.showAlert(t("alert_couldnt_save")); renderList();
-    });
+      isDirty = false;
+      await renderList();
+      showListScreen(true);
+    } catch (e) {
+      console.error(e); tg?.showAlert(t("alert_couldnt_save")); await renderList();
+    } finally {
+      tg?.MainButton.hideProgress();
+      tg?.MainButton.setText(t("save_btn"));
+    }
   }
 
   async function handleDelete() {

@@ -36,17 +36,53 @@ router = Router()
 # Fallback and default language is always English.
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
-        "welcome": "Hi! Echo helps you not forget what matters.\n\nTap the button below to open your reminders.",
+        "welcome": (
+            "Hi! I'm Echo — I help you not forget what matters.\n\n"
+            "• Personal reminders, one-time or recurring (daily/weekly/monthly)\n"
+            "• Add me to a group or channel as admin to schedule messages there too\n"
+            "• Mix several phrases into a message pool for variety\n\n"
+            "Tap the button below to open your reminders."
+        ),
+        "help": (
+            "<b>How Echo works</b>\n\n"
+            "1. Open the app to create a reminder\n"
+            "2. Add me to a group or channel as admin to route reminders there too\n"
+            "3. Use the Tracker (Done) and Snooze buttons on messages to stay on track"
+        ),
         "app": "Your reminders are here:",
         "open_echo": "Open Echo",
     },
     "uk": {
-        "welcome": "Привіт! Echo допоможе не забувати важливе.\n\nТисни кнопку нижче, щоб відкрити список нагадувань.",
+        "welcome": (
+            "Привіт! Я Echo — допоможу не забувати важливе.\n\n"
+            "• Особисті нагадування, одноразові чи повторювані (щодня/щотижня/щомісяця)\n"
+            "• Додай мене в групу чи канал адміном — і плануй повідомлення туди теж\n"
+            "• Об'єднуй кілька варіантів тексту в пул повідомлень\n\n"
+            "Тисни кнопку нижче, щоб відкрити список нагадувань."
+        ),
+        "help": (
+            "<b>Як працює Echo</b>\n\n"
+            "1. Відкрий застосунок, щоб створити нагадування\n"
+            "2. Додай мене в групу чи канал адміном, щоб надсилати нагадування і туди\n"
+            "3. Використовуй кнопки «Виконано» і «Відкласти» під повідомленнями"
+        ),
         "app": "Твої нагадування тут:",
         "open_echo": "Відкрити Echo",
     },
     "hy": {
-        "welcome": "Բարև! Echo-ն կօգնի ձեզ չմոռանալ կարևորը։\n\nՍեղմեք ներքևի կոճակը՝ ձեր հիշեցումները բացելու համար։",
+        "welcome": (
+            "Բարև, ես Echo-ն եմ — կօգնեմ չմոռանալ կարևորը։\n\n"
+            "• Անձնական հիշեցումներ՝ մեկանգամյա կամ կրկնվող (ամեն օր/շաբաթ/ամիս)\n"
+            "• Ավելացրու ինձ խմբում կամ ալիքում որպես ադմին՝ այնտեղ էլ հաղորդագրություններ պլանավորելու համար\n"
+            "• Միավորիր մի քանի տարբերակ մեկ հաղորդագրությունների փաթեթում\n\n"
+            "Սեղմեք ներքևի կոճակը՝ ձեր հիշեցումները բացելու համար։"
+        ),
+        "help": (
+            "<b>Ինչպես աշխատել Echo-ի հետ</b>\n\n"
+            "1. Բացիր հավելվածը՝ հիշեցում ստեղծելու համար\n"
+            "2. Ավելացրու ինձ խմբում կամ ալիքում որպես ադմին, որպեսզի հիշեցումներ ուղարկվեն նաև այնտեղ\n"
+            "3. Օգտագործիր «Կատարված» և «Հետաձգել» կոճակները հաղորդագրությունների տակ"
+        ),
         "app": "Ձեր հիշեցումները այստեղ են՝",
         "open_echo": "Բացել Echo-ն",
     },
@@ -91,6 +127,11 @@ async def on_language_pick(callback: CallbackQuery) -> None:
 async def cmd_app(message: Message) -> None:
     lang = await db.get_user_language(message.from_user.id)
     await message.answer(t(lang, "app"), reply_markup=_webapp_keyboard(lang))
+
+@router.message(Command("help"))
+async def cmd_help(message: Message) -> None:
+    lang = await db.get_user_language(message.from_user.id)
+    await message.answer(t(lang, "help"), reply_markup=_webapp_keyboard(lang))
 
 ACTIVE_CHAT_STATUSES = ("member", "administrator", "creator")
 REMOVED_CHAT_STATUSES = ("left", "kicked")
