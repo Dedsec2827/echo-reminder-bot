@@ -29,6 +29,7 @@
   svg { display: block; }
   #app {
     min-height: 100%;
+    width: 100%; max-width: 480px; margin: 0 auto; box-shadow: 0 0 20px rgba(0,0,0,0.05);
     /* Telegram fullscreen mode draws under the system bars, so content needs two insets added
        together: --tg-safe-area-inset-* (the device's own status bar / notch / home indicator)
        and --tg-content-safe-area-inset-* (space Telegram's own overlay controls take, e.g. the
@@ -301,7 +302,9 @@
   // tg?.enableClosingConfirmation?.();
 
   // Додаємо запит на повноекранний режим
-  if (tg?.requestFullscreen) {
+  // Тільки на мобільних платформах (на Telegram Desktop викликає незграбне масштабування)
+  const isMobile = ['android', 'android_x', 'ios'].includes(tg?.platform);
+  if (isMobile && tg?.requestFullscreen) {
     tg.requestFullscreen();
   }
 

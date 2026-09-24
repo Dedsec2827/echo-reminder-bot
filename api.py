@@ -140,6 +140,12 @@ async def serve_index() -> FileResponse:
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
+@app.get("/api/health")
+async def health() -> dict:
+    """Lightweight keep-alive endpoint for external cron pings (no auth, no DB, no frontend)."""
+    return {"status": "ok"}
+
+
 @app.get("/api/chats")
 async def list_chats(x_telegram_init_data: Optional[str] = Header(default=None)) -> list[dict]:
     uid = get_current_user_id(x_telegram_init_data)
