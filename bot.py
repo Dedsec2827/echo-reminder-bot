@@ -33,18 +33,58 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("echo-bot")
 router = Router()
 
+# Fallback and default language is always English.
+TRANSLATIONS: dict[str, dict[str, str]] = {
+    "en": {
+        "welcome": "Hi! Echo helps you not forget what matters.\n\nTap the button below to open your reminders.",
+        "app": "Your reminders are here:",
+        "open_echo": "Open Echo",
+    },
+    "uk": {
+        "welcome": "Привіт! Echo допоможе не забувати важливе.\n\nТисни кнопку нижче, щоб відкрити список нагадувань.",
+        "app": "Твої нагадування тут:",
+        "open_echo": "Відкрити Echo",
+    },
+}
+LANGUAGE_PROMPT = "Please choose your language / Будь ласка, оберіть мову:"
+LANGUAGE_PICKER_KEYBOARD = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(text="🇬🇧 English", callback_data="lang:en"),
+    InlineKeyboardButton(text="🇺🇦 Українська", callback_data="lang:uk"),
+]])
+
+
+def t(lang: str, key: str) -> str:
+    return TRANSLATIONS.get(lang, TRANSLATIONS["en"]).get(key, TRANSLATIONS["en"][key])
+
+
+def _webapp_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, "open_echo"), web_app=WebAppInfo(url=WEBAPP_URL))]])
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     user = message.from_user
     await db.upsert_user(user.id, user.username, user.first_name)
     await db.upsert_chat(chat_id=user.id, owner_id=user.id, title="Personal messages", chat_type="private")
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Відкрити Echo", web_app=WebAppInfo(url=WEBAPP_URL))]])
-    await message.answer("Привіт! Echo допоможе не забувати важливе.\n\nТисни кнопку нижче, щоб відкрити список нагадувань.", reply_markup=keyboard)
+    await message.answer(LANGUAGE_PROMPT, reply_markup=LANGUAGE_PICKER_KEYBOARD)
+
+
+@router.callback_query(F.data.startswith("lang:"))
+async def on_language_pick(callback: CallbackQuery) -> None:
+    lang = callback.data.split(":", 1)[1]
+    if lang not in TRANSLATIONS:
+        lang = "en"
+    await db.set_user_language(callback.from_user.id, lang)
+    await callback.answer()
+    try:
+        await callback.message.edit_text(t(lang, "welcome"), reply_markup=_webapp_keyboard(lang))
+    except Exception:
+        pass
 
 @router.message(Command("app"))
 async def cmd_app(message: Message) -> None:
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Відкрити Echo", web_app=WebAppInfo(url=WEBAPP_URL))]])
-    await message.answer("Твої нагадування тут:", reply_markup=keyboard)
+    lang = await db.get_user_language(message.from_user.id)
+    await message.answer(t(lang, "app"), reply_markup=_webapp_keyboard(lang))
 
 @router.my_chat_member()
 async def on_bot_added_to_chat(event: ChatMemberUpdated) -> None:
@@ -75,9 +115,9 @@ def _snooze_picker_keyboard(reminder_id: int) -> InlineKeyboardMarkup:
 
 async def _send_message_with_photo(bot: Bot, chat_id: int, text: str, media_url: Optional[str], keyboard: Optional[InlineKeyboardMarkup]) -> None:
     if media_url:
-        await bot.send_photo(chat_id=chat_id, photo=media_url, caption=text, reply_markup=keyboard)
+        await bot.send_photo(chat_id=chat_id, photo=media_url, caption=text, reply_markup=keyboard, disable_notification=False)
     else:
-        await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard, disable_notification=False)
 
 
 async def _delete_channel_media(bot: Bot, reminder: dict) -> None:
@@ -145,7 +185,7 @@ async def _advance_or_expire_recurring(reminder: dict) -> None:
         await db.mark_reminder_sent(reminder["id"], keep_active=False)
         logger.info("Reminder %s reached its end date", reminder["id"])
         return
-    next_run_date = db.compute_next_run_date(reminder["run_date"], recurrence)
+    next_run_date = db.compute_next_run_date(reminder["run_date"], recurrence, daily_times=reminder.get("daily_times"))
     await db.reschedule_recurring_reminder(reminder["id"], next_run_date)
     logger.info("Reminder %s is recurring (%s); rescheduled to %s", reminder["id"], recurrence, next_run_date)
 

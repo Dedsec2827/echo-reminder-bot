@@ -106,6 +106,10 @@
   .pool-variant-remove { flex-shrink: 0; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--secondary-bg); color: var(--destructive); font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 0; }
   .pool-variant-remove:active { opacity: 0.7; }
 
+  /* Daily times */
+  .daily-time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .daily-time-row input[type="time"] { flex: 1; border: none; outline: none; background: var(--secondary-bg); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 15px; font-family: inherit; }
+
   .field-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 0.5px solid var(--divider); }
   .field-row:last-child { border-bottom: none; }
   .field-row .field-title { font-size: 16px; }
@@ -230,9 +234,10 @@
         <label for="f-date">Date &amp; time</label>
         <input type="datetime-local" id="f-date">
       </div>
-      <div class="field" id="field-time" style="display:none;">
-        <label for="f-time">Time</label>
-        <input type="time" id="f-time">
+      <div class="field" id="field-daily-times" style="display:none;">
+        <label>Times</label>
+        <div id="daily-times-list"></div>
+        <button type="button" class="pill-btn" id="btn-add-time" style="margin-top:4px;">+ Add time</button>
       </div>
       <div class="field">
         <label>Repeat</label>
@@ -291,7 +296,8 @@
   tg?.expand();
   // Prevent an accidental swipe-down from closing the app mid-edit.
   tg?.disableVerticalSwipes?.();
-  tg?.enableClosingConfirmation?.();
+  // Closing confirmation intentionally disabled so users can close the app freely.
+  // tg?.enableClosingConfirmation?.();
 
   // Додаємо запит на повноекранний режим
   if (tg?.requestFullscreen) {
@@ -346,9 +352,10 @@
   const btnAddVariant = document.getElementById("btn-add-variant");
   
   const fieldDatetime = document.getElementById("field-datetime");
-  const fieldTime = document.getElementById("field-time");
+  const fieldDailyTimes = document.getElementById("field-daily-times");
+  const dailyTimesList = document.getElementById("daily-times-list");
+  const btnAddTime = document.getElementById("btn-add-time");
   const fDate = document.getElementById("f-date");
-  const fTime = document.getElementById("f-time");
   const fieldEndDate = document.getElementById("field-enddate");
   const fEndDate = document.getElementById("f-enddate");
   const enddateHint = document.getElementById("enddate-hint");
@@ -469,12 +476,43 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
-  function nextDailyRunDate(timeStr) {
-    const [hh, mm] = timeStr.split(":").map(Number), now = new Date();
-    const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-    if (candidate <= now) candidate.setDate(candidate.getDate() + 1);
-    return candidate;
+  // Given a list of "HH:MM" times, returns the next one still ahead today, or the
+  // earliest time tomorrow if every slot for today has already passed.
+  function nextDailyRunDate(times) {
+    const list = [...times].sort(), now = new Date();
+    for (const timeStr of list) {
+      const [hh, mm] = timeStr.split(":").map(Number);
+      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+      if (candidate > now) return candidate;
+    }
+    const [hh, mm] = list[0].split(":").map(Number);
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0, 0);
   }
+
+  function addDailyTimeRow(value) {
+    const row = document.createElement("div"); row.className = "daily-time-row";
+    const input = document.createElement("input"); input.type = "time"; input.value = value || "09:00";
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
+    removeBtn.addEventListener("click", () => {
+      if (dailyTimesList.children.length <= 1) return;
+      row.remove(); markDirty();
+    });
+    row.appendChild(input); row.appendChild(removeBtn); dailyTimesList.appendChild(row);
+    return input;
+  }
+
+  function renderDailyTimes(times) {
+    dailyTimesList.innerHTML = "";
+    const list = (times && times.length) ? times : ["09:00"];
+    list.forEach((t) => addDailyTimeRow(t));
+  }
+
+  function getDailyTimes() {
+    return Array.from(dailyTimesList.querySelectorAll('input[type="time"]')).map((i) => i.value).filter(Boolean).sort();
+  }
+
+  btnAddTime.addEventListener("click", () => { addDailyTimeRow("09:00").focus(); markDirty(); });
+  dailyTimesList.addEventListener("change", markDirty);
 
   function chatOptionLabel(chat) { return chat.chat_type === "private" ? chat.title : `${chat.chat_type === "channel" ? "Channel" : "Group"}: ${chat.title}`; }
   function escapeHtml(str) { const div = document.createElement("div"); div.textContent = str; return div.innerHTML; }
@@ -501,6 +539,7 @@
       const badges = [];
       if (r.recurrence && r.recurrence !== "none") {
         let recurrenceText = RECURRENCE_LABELS[r.recurrence] || r.recurrence;
+        if (r.recurrence === "daily" && r.daily_times && r.daily_times.length) recurrenceText += ` (${r.daily_times.join(", ")})`;
         if (r.end_date) recurrenceText += ` until ${formatDateTime(r.end_date).replace(/, .*/, "")}`;
         badges.push(`<span class="badge">${ICONS.repeat}${recurrenceText}</span>`);
       }
@@ -653,8 +692,8 @@
   function updateScheduleUI() {
     const isDaily = currentRecurrence === "daily", isRecurring = currentRecurrence !== "none";
     fieldDatetime.style.display = isDaily ? "none" : "block";
-    fieldTime.style.display = isDaily ? "block" : "none";
-    if (isDaily && !fTime.value && fDate.value) fTime.value = toTimeValue(parseWheelDateTime(fDate.value));
+    fieldDailyTimes.style.display = isDaily ? "block" : "none";
+    if (isDaily && dailyTimesList.children.length === 0) renderDailyTimes(["09:00"]);
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
     if (!isRecurring) fEndDate.value = "";
@@ -689,7 +728,7 @@
     dangerZone.style.display = "none"; trackerSub.textContent = 'Adds a "Done" button and counts a streak';
     fText.value = ""; fPool.checked = false; updatePoolUI();
     const soon = new Date(Date.now() + 60 * 60 * 1000);
-    fDate.value = toWheelDatetimeValue(soon.toISOString()); fTime.value = "09:00"; fEndDate.value = "";
+    fDate.value = toWheelDatetimeValue(soon.toISOString()); renderDailyTimes(["09:00"]); fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
@@ -706,7 +745,9 @@
     editTitle.textContent = "Reminder"; editSubtitle.textContent = `Scheduled for ${formatDateTime(reminder.run_date)}`;
     dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? `Adds a "Done" button · current streak: ${reminder.streak_count}` : 'Adds a "Done" button and counts a streak';
     fText.value = reminder.text; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
-    fDate.value = toWheelDatetimeValue(reminder.run_date); fTime.value = toTimeValue(reminder.run_date); fEndDate.value = toDateInputValue(reminder.end_date);
+    fDate.value = toWheelDatetimeValue(reminder.run_date);
+    renderDailyTimes(reminder.daily_times && reminder.daily_times.length ? reminder.daily_times : [toTimeValue(reminder.run_date)]);
+    fEndDate.value = toDateInputValue(reminder.end_date);
     fSnooze.checked = !!reminder.snooze_enabled; fTracker.checked = !!reminder.tracker_enabled;
     setRecurrenceControl(reminder.recurrence || "none");
     renderMediaThumbnails(); fMediaFile.value = "";
@@ -732,9 +773,11 @@
     if (fPool.checked && poolVariants(fText.value).length < 2) return tg?.showAlert("Add at least two phrases to use a message pool.");
     if (!fRoute.value) return tg?.showAlert("Please choose where to send this reminder.");
     let runDateIso;
+    let dailyTimes = null;
     if (currentRecurrence === "daily") {
-      if (!fTime.value) return tg?.showAlert("Please choose a time.");
-      runDateIso = nextDailyRunDate(fTime.value).toISOString();
+      dailyTimes = getDailyTimes();
+      if (dailyTimes.length === 0) return tg?.showAlert("Please choose a time.");
+      runDateIso = nextDailyRunDate(dailyTimes).toISOString();
     } else {
       if (!fDate.value) return tg?.showAlert("Please choose a date and time.");
       runDateIso = parseWheelDateTime(fDate.value).toISOString();
@@ -745,7 +788,7 @@
       chat_id: Number(fRoute.value), text: fText.value.trim(), run_date: runDateIso,
       media_url: currentMediaUrl || null, media_message_id: currentMediaMessageId || null,
       snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
-      end_date: endDateIso, use_message_pool: fPool.checked,
+      end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimes,
     };
     const savePromise = currentReminderId ? updateReminder(currentReminderId, payload) : createReminder(payload);
     isDirty = false;
@@ -792,7 +835,7 @@
 
   fText.addEventListener("input", markDirty);
   poolVariantsContainer.addEventListener("input", markDirty);
-  [fDate, fTime, fEndDate, fRoute, fSnooze, fTracker].forEach((el) => el.addEventListener("change", markDirty));
+  [fDate, fEndDate, fRoute, fSnooze, fTracker].forEach((el) => el.addEventListener("change", markDirty));
 
   async function handleCancelEdit() {
     // Leaving the edit screen without saving: any photo uploaded/replaced in this

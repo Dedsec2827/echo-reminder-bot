@@ -4,6 +4,7 @@ database.py
 Асинхронний шар роботи з PostgreSQL (через asyncpg) для бота Echo.
 """
 
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -37,6 +38,28 @@ def parse_iso_utc(value: str) -> datetime:
 
 def _row_to_dict(row: Optional[asyncpg.Record]) -> Optional[dict[str, Any]]:
     return dict(row) if row else None
+
+
+def serialize_daily_times(daily_times: Optional[list[str]]) -> Optional[str]:
+    return json.dumps(daily_times) if daily_times else None
+
+
+def parse_daily_times(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+    try:
+        data = json.loads(value)
+        return [t for t in data if isinstance(t, str)]
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _reminder_row_to_dict(row: Optional[asyncpg.Record]) -> Optional[dict[str, Any]]:
+    if not row:
+        return None
+    data = dict(row)
+    data["daily_times"] = parse_daily_times(data.get("daily_times"))
+    return data
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -73,9 +96,21 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         "end_date": "ALTER TABLE reminders ADD COLUMN end_date TEXT",
         "use_message_pool": "ALTER TABLE reminders ADD COLUMN use_message_pool INTEGER NOT NULL DEFAULT 0",
         "media_message_id": "ALTER TABLE reminders ADD COLUMN media_message_id BIGINT",
+        "daily_times": "ALTER TABLE reminders ADD COLUMN daily_times TEXT",
     }
     for column, ddl in migrations.items():
         if column not in columns:
+            await conn.execute(ddl)
+
+    user_rows = await conn.fetch(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"
+    )
+    user_columns = {r["column_name"] for r in user_rows}
+    user_migrations = {
+        "language": "ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'en'",
+    }
+    for column, ddl in user_migrations.items():
+        if column not in user_columns:
             await conn.execute(ddl)
 
 
@@ -151,6 +186,17 @@ async def get_user(user_id: int) -> Optional[dict]:
     return _row_to_dict(row)
 
 
+async def get_user_language(user_id: int) -> str:
+    pool = await get_pool()
+    value = await pool.fetchval("SELECT language FROM users WHERE user_id = $1", user_id)
+    return value or "en"
+
+
+async def set_user_language(user_id: int, language: str) -> None:
+    pool = await get_pool()
+    await pool.execute("UPDATE users SET language = $1 WHERE user_id = $2", language, user_id)
+
+
 async def upsert_chat(chat_id: int, owner_id: int, title: str, chat_type: str) -> None:
     pool = await get_pool()
     await pool.execute(
@@ -184,18 +230,20 @@ async def create_reminder(
     media_message_id: Optional[int] = None,
     snooze_enabled: bool = False, tracker_enabled: bool = False, recurrence: str = "none",
     end_date: Optional[str] = None, use_message_pool: bool = False,
+    daily_times: Optional[list[str]] = None,
 ) -> int:
     pool = await get_pool()
     new_id = await pool.fetchval(
         """
         INSERT INTO reminders
             (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
-             use_message_pool, snooze_enabled, tracker_enabled, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             use_message_pool, snooze_enabled, tracker_enabled, daily_times, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id
         """,
         user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
         int(use_message_pool), int(snooze_enabled), int(tracker_enabled),
+        serialize_daily_times(daily_times),
         utcnow().isoformat(),
     )
     return new_id
@@ -207,13 +255,13 @@ async def get_reminders_by_user(user_id: int) -> list[dict]:
         "SELECT * FROM reminders WHERE user_id = $1 AND is_active = 1 ORDER BY run_date ASC",
         user_id,
     )
-    return [_row_to_dict(r) for r in rows]
+    return [_reminder_row_to_dict(r) for r in rows]
 
 
 async def get_reminder(reminder_id: int) -> Optional[dict]:
     pool = await get_pool()
     row = await pool.fetchrow("SELECT * FROM reminders WHERE id = $1", reminder_id)
-    return _row_to_dict(row)
+    return _reminder_row_to_dict(row)
 
 
 async def update_reminder(reminder_id: int, **fields: Any) -> None:
@@ -221,11 +269,13 @@ async def update_reminder(reminder_id: int, **fields: Any) -> None:
         return
     allowed = {
         "chat_id", "text", "media_url", "media_message_id", "run_date", "recurrence", "end_date",
-        "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active",
+        "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active", "daily_times",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return
+    if "daily_times" in updates and not isinstance(updates["daily_times"], str):
+        updates["daily_times"] = serialize_daily_times(updates["daily_times"])
     pool = await get_pool()
     set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
     values = list(updates.values())
@@ -249,7 +299,7 @@ async def get_due_reminders() -> list[dict]:
         "SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0 AND run_date <= $1",
         now_iso,
     )
-    return [_row_to_dict(r) for r in rows]
+    return [_reminder_row_to_dict(r) for r in rows]
 
 
 async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:
@@ -260,9 +310,33 @@ async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:
     )
 
 
-def compute_next_run_date(current_run_date_iso: str, recurrence: str) -> str:
+def compute_next_run_date(
+    current_run_date_iso: str, recurrence: str, daily_times: Optional[list[str]] = None
+) -> str:
     if recurrence not in RECURRING_TYPES:
         raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
+
+    now = utcnow()
+
+    if recurrence == "daily" and daily_times:
+        # Multiple times per day: pick the next one still ahead today, or the
+        # earliest time tomorrow if every slot for today has already fired.
+        parsed: list[tuple[int, int]] = []
+        for t in daily_times:
+            try:
+                hh, mm = t.split(":")
+                parsed.append((int(hh), int(mm)))
+            except (ValueError, AttributeError):
+                continue
+        if parsed:
+            parsed.sort()
+            for hh, mm in parsed:
+                candidate = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+                if candidate > now:
+                    return candidate.isoformat()
+            hh, mm = parsed[0]
+            candidate = (now + timedelta(days=1)).replace(hour=hh, minute=mm, second=0, microsecond=0)
+            return candidate.isoformat()
 
     def _advance(dt: datetime) -> datetime:
         if recurrence == "yearly":
@@ -272,7 +346,6 @@ def compute_next_run_date(current_run_date_iso: str, recurrence: str) -> str:
                 return dt.replace(year=dt.year + 1, day=28)
         return dt + RECURRENCE_INTERVALS[recurrence]
 
-    now = utcnow()
     next_date = _advance(parse_iso_utc(current_run_date_iso))
     while next_date <= now:
         next_date = _advance(next_date)

@@ -93,6 +93,7 @@ class ReminderIn(BaseModel):
     recurrence: RecurrenceType = "none"
     end_date: Optional[str] = None
     use_message_pool: bool = False
+    daily_times: Optional[list[str]] = None
 
 
 class ReminderUpdate(BaseModel):
@@ -107,6 +108,7 @@ class ReminderUpdate(BaseModel):
     end_date: Optional[str] = None
     use_message_pool: Optional[bool] = None
     is_active: Optional[bool] = None
+    daily_times: Optional[list[str]] = None
 
 
 class TestSendIn(BaseModel):
@@ -229,6 +231,7 @@ async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[st
         snooze_enabled=payload.snooze_enabled,
         tracker_enabled=payload.tracker_enabled, recurrence=payload.recurrence,
         end_date=payload.end_date, use_message_pool=payload.use_message_pool,
+        daily_times=payload.daily_times,
     )
     return await db.get_reminder(new_id)
 
