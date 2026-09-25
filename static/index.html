@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Echo</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -24,11 +24,26 @@
     height: 100%; margin: 0; background: var(--secondary-bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Stops iOS WebKit from auto-zooming the page itself (as opposed to a focused
+       input) and from rubber-banding the whole document, both of which compound the
+       native date/time-picker fullscreen glitch inside Telegram's WebView. */
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+    overscroll-behavior: none;
+    width: 100%; overflow-x: hidden;
   }
   button, input, textarea, select { font-family: inherit; }
   svg { display: block; }
+  /* Explicit, strict touch boundaries on every native form control so a stray
+     pinch/drag starting on a date/time input or <select> can't be interpreted as a
+     page-zoom gesture by iOS WebKit while its picker overlay is open. */
+  input, select, textarea { touch-action: manipulation; }
   #app {
     min-height: 100%;
+    /* Container wrapper gets its own explicit boundary: vertical panning only, no
+       pinch-zoom, and no bounce past its own edges - keeps a picker overlay from
+       ever being able to drag/zoom the app shell underneath it. */
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
     width: 100%; max-width: 480px; margin: 0 auto; box-shadow: 0 0 20px rgba(0,0,0,0.05);
     /* Telegram fullscreen mode draws under the system bars, so content needs two insets added
        together: --tg-safe-area-inset-* (the device's own status bar / notch / home indicator)
@@ -68,7 +83,16 @@
   /* List Rows */
   .list-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 0.5px solid var(--divider); cursor: pointer; }
   .list-row:last-child { border-bottom: none; }
-  .list-row:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  /* The native :active pseudo-class is restricted to devices with a real mouse/trackpad.
+     On touch devices (iOS WebKit especially) :active can get "stuck" on after a tap or a
+     swipe gesture, which is exactly the permanent highlight bug this app was hitting.
+     Touch feedback instead uses the .pressed class below, added/removed explicitly by
+     the pointer-event handlers so it can never get left on. */
+  @media (hover: hover) and (pointer: fine) {
+    .list-row:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  }
+  .list-row.pressed { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  .list-row:focus { outline: none; }
   .row-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--secondary-bg); color: var(--link); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .row-icon svg { width: 18px; height: 18px; }
   .row-body { flex: 1; min-width: 0; }
@@ -374,6 +398,32 @@
     tg.requestFullscreen();
   }
   tg?.lockOrientation && tg.lockOrientation('portrait');
+
+  // --- iOS WebKit native-picker fullscreen-zoom guard ---------------------------------
+  // On some iOS WebKit builds, opening a native <input type="date"/"time"> or <select>
+  // picker while running inside Telegram's fullscreen WebView can leave the page
+  // permanently pinch-zoomed and/or scrolled after the picker closes, effectively
+  // trapping the user. Nudging the viewport meta tag (a well-known WebKit reflow trick)
+  // and scrolling back to the top as soon as the field loses focus reliably clears that
+  // stuck state. Delegated on document + capture phase so it also covers time/date
+  // inputs added dynamically later (daily time rows, exclude-date rows, etc.).
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  function resetViewportZoom() {
+    if (!viewportMeta) return;
+    const original = viewportMeta.getAttribute("content");
+    viewportMeta.setAttribute("content", original + ", maximum-scale=1.0");
+    requestAnimationFrame(() => {
+      viewportMeta.setAttribute("content", original);
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+    });
+  }
+  function isNativePickerEl(el) {
+    if (!el || !el.tagName) return false;
+    return el.tagName === "SELECT" || (el.tagName === "INPUT" && (el.type === "date" || el.type === "time"));
+  }
+  document.addEventListener("focusout", (e) => { if (isNativePickerEl(e.target)) resetViewportZoom(); }, true);
+  document.addEventListener("change", (e) => { if (isNativePickerEl(e.target)) resetViewportZoom(); }, true);
 
   const API = "/api";
   const initData = tg?.initData || "";
@@ -949,43 +999,59 @@
       row.className = "list-row";
       row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
 
-      let startX = 0, startY = 0, currentX = 0, isDragging = false, axisLocked = null, didSwipe = false;
-      const maxSwipe = -140; // clamp so a fast/long drag can't fling the row off past the reveal
+      let startX = 0, startY = 0, currentX = 0, isDragging = false, axisLocked = null, didSwipe = false, activePointerId = null;
+      const maxSwipe = -140;   // clamp so a fast/long drag can't fling the row off past the reveal
+      const SWIPE_SLOP = 6;    // px of movement before we decide horizontal-vs-vertical intent
+      const DELETE_THRESHOLD = 80;
 
-      row.addEventListener("touchstart", (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
+      // Pointer Events unify touch/mouse/pen into a single stream, with real capture
+      // (setPointerCapture) so the gesture keeps tracking even if the finger drifts off
+      // the row. Crucially, visual "pressed" feedback here is a plain .pressed class we
+      // add/remove ourselves rather than relying on the browser's native :active state -
+      // that reliance combined with the old raw touch handlers is what left rows stuck
+      // with a highlighted background instead of swiping smoothly on iOS WebKit.
+      row.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return; // ignore right/middle click
+        startX = e.clientX;
+        startY = e.clientY;
         currentX = 0;
         isDragging = true;
         axisLocked = null;
         didSwipe = false;
-      }, { passive: true });
+        activePointerId = e.pointerId;
+        row.classList.add("pressed");
+      });
 
-      row.addEventListener("touchmove", (e) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        const dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
+      row.addEventListener("pointermove", (e) => {
+        if (!isDragging || e.pointerId !== activePointerId) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
         if (axisLocked === null) {
-          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // not enough movement yet to tell intent
+          if (Math.abs(dx) < SWIPE_SLOP && Math.abs(dy) < SWIPE_SLOP) return; // not enough movement yet to tell intent
           axisLocked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-          if (axisLocked === "x") row.classList.add("swiping");
+          row.classList.remove("pressed"); // a real gesture is underway either way - drop the tap tint
+          if (axisLocked === "x") {
+            row.classList.add("swiping");
+            row.setPointerCapture?.(e.pointerId); // keep receiving moves even past the row's edge
+          }
         }
-        if (axisLocked !== "y") { // horizontal gesture: drive the swipe
+        if (axisLocked === "x") { // horizontal gesture: drive the swipe
           currentX = Math.min(0, Math.max(dx, maxSwipe)); // left only, clamped
           row.style.transform = `translateX(${currentX}px)`;
         }
         // vertical gesture: do nothing and let the page's native scroll (touch-action: pan-y) handle it
-      }, { passive: true });
+      });
 
-      function finishSwipe() {
+      function finishSwipe(e) {
         if (!isDragging) return;
         isDragging = false;
-        if (axisLocked !== "x") { axisLocked = null; return; } // was a scroll, not a swipe - nothing to undo
+        row.classList.remove("pressed"); // always clear - this is what stops the stuck highlight
+        if (e && row.hasPointerCapture?.(e.pointerId)) row.releasePointerCapture(e.pointerId);
+        if (axisLocked !== "x") { axisLocked = null; currentX = 0; return; } // was a tap or a scroll - nothing to undo
         row.classList.remove("swiping"); // re-enable the CSS transition for whatever comes next
-        didSwipe = Math.abs(currentX) > 10; // consumed by the click handler below, reset on next touchstart
+        didSwipe = Math.abs(currentX) > 10; // consumed by the click handler below, reset on next pointerdown
 
-        if (currentX < -80) { // Threshold to trigger delete
+        if (currentX < -DELETE_THRESHOLD) { // Threshold to trigger delete
           row.style.transform = `translateX(-100%)`; // Slide completely out
           setTimeout(() => {
             tg?.showConfirm(t("confirm_delete"), async (confirmed) => {
@@ -1007,8 +1073,8 @@
         axisLocked = null;
       }
 
-      row.addEventListener("touchend", finishSwipe);
-      row.addEventListener("touchcancel", finishSwipe); // interrupted touch (call, system gesture) can no longer leave the row stuck mid-swipe
+      row.addEventListener("pointerup", finishSwipe);
+      row.addEventListener("pointercancel", finishSwipe); // interrupted gesture (call, system gesture) can no longer leave the row stuck mid-swipe or highlighted
 
       row.addEventListener("click", () => {
         if (didSwipe) { didSwipe = false; return; } // Prevent click-through right after a swipe
@@ -1165,16 +1231,19 @@
     const isDaily = currentRecurrence === "daily";
     const isOnce = currentRecurrence === "none";
     const isRecurring = !isOnce;
-    // Multiple times are always available for Once and Daily (also while editing); Weekly/Yearly have one time.
-    const multiTime = isDaily || isOnce;
+    // Multiple times per day are now available for every recurrence - Once, Daily,
+    // Weekly, and Yearly all use the same multi-time list (dailyTimesList). Weekly and
+    // Yearly still anchor to the date picked in fDate (weekday for weekly, month/day for
+    // yearly); only the "how many times that day" part is what's now shared with Daily.
     fieldDatetime.style.display = isDaily ? "none" : "block";
     fieldDailyTimes.style.display = "block";
+    // "Each time creates its own one-time reminder" only applies to a brand-new Once
+    // reminder - for every recurring option the times list stays part of one reminder.
     extraTimesHint.style.display = isOnce ? "block" : "none";
-    if (dailyTimesLabel) dailyTimesLabel.textContent = t(multiTime ? "times_label" : "time_label");
+    if (dailyTimesLabel) dailyTimesLabel.textContent = t("times_label");
     if (dailyTimesList.children.length === 0) renderDailyTimes([]);
-    if (!multiTime) { while (dailyTimesList.children.length > 1) dailyTimesList.lastElementChild.remove(); }
     updateDailyTimesRemoveButtons();
-    btnAddTime.style.display = multiTime ? "" : "none";
+    btnAddTime.style.display = "";
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
     if (!isRecurring) fEndDate.value = "";
@@ -1328,10 +1397,16 @@
     } else {
       if (!fDate.value) return tg?.showAlert(t("alert_choose_date"));
       const first = combineDateTime(fDate.value, times[0]);
-      if (currentRecurrence === "none" && currentReminderId === null) {
-        if (first <= new Date()) return tg?.showAlert(t("alert_past_time"));
-        // Every time for a brand-new "Once" reminder - the backend combines the date with each
-        // time and creates one independent one-off reminder per time.
+      if (currentRecurrence === "none") {
+        if (currentReminderId === null) {
+          if (first <= new Date()) return tg?.showAlert(t("alert_past_time"));
+          // Every time for a brand-new "Once" reminder - the backend combines the date with each
+          // time and creates one independent one-off reminder per time.
+          dailyTimesPayload = times;
+        }
+      } else {
+        // Weekly/Yearly: same multi-time list as Daily, just anchored to this date
+        // (weekday for weekly, month/day for yearly) instead of firing every day.
         dailyTimesPayload = times;
       }
       runDateIso = first.toISOString();
