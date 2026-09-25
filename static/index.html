@@ -82,7 +82,7 @@
   /* Animated Swipe-to-Delete */
   .list-row-wrapper { position: relative; overflow: hidden; border-bottom: 0.5px solid var(--divider); }
   .list-row-wrapper:last-child { border-bottom: none; }
-  .list-row { position: relative; z-index: 2; background: var(--section-bg); transition: transform 0.2s ease; border-bottom: none !important; }
+  .list-row { position: relative; z-index: 2; background: var(--section-bg); transition: transform 0.2s ease; border-bottom: none !important; touch-action: pan-y; }
   .list-row.swiping { transition: none; }
   .swipe-delete-bg { position: absolute; inset: 0; background: var(--destructive); display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: #ffffff; z-index: 1; }
   
@@ -895,7 +895,7 @@
     return [...new Set(times)].sort();
   }
 
-  btnAddTime.addEventListener("click", () => { addDailyTimeRow().focus(); markDirty(); });
+  btnAddTime.addEventListener("click", () => { addDailyTimeRow(); markDirty(); });
   dailyTimesList.addEventListener("change", markDirty);
 
   function chatOptionLabel(chat) {
@@ -949,24 +949,41 @@
       row.className = "list-row";
       row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
 
-      let startX = 0, currentX = 0, isDragging = false;
+      let startX = 0, startY = 0, currentX = 0, isDragging = false, axisLocked = null, didSwipe = false;
+      const maxSwipe = -140; // clamp so a fast/long drag can't fling the row off past the reveal
 
       row.addEventListener("touchstart", (e) => {
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = 0;
         isDragging = true;
-        row.classList.add("swiping");
+        axisLocked = null;
+        didSwipe = false;
       }, { passive: true });
 
       row.addEventListener("touchmove", (e) => {
         if (!isDragging) return;
-        currentX = e.touches[0].clientX - startX;
-        if (currentX < 0) row.style.transform = `translateX(${currentX}px)`; // Swipe left only
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (axisLocked === null) {
+          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // not enough movement yet to tell intent
+          axisLocked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+          if (axisLocked === "x") row.classList.add("swiping");
+        }
+        if (axisLocked !== "y") { // horizontal gesture: drive the swipe
+          currentX = Math.min(0, Math.max(dx, maxSwipe)); // left only, clamped
+          row.style.transform = `translateX(${currentX}px)`;
+        }
+        // vertical gesture: do nothing and let the page's native scroll (touch-action: pan-y) handle it
       }, { passive: true });
 
-      row.addEventListener("touchend", (e) => {
+      function finishSwipe() {
         if (!isDragging) return;
         isDragging = false;
-        row.classList.remove("swiping");
+        if (axisLocked !== "x") { axisLocked = null; return; } // was a scroll, not a swipe - nothing to undo
+        row.classList.remove("swiping"); // re-enable the CSS transition for whatever comes next
+        didSwipe = Math.abs(currentX) > 10; // consumed by the click handler below, reset on next touchstart
 
         if (currentX < -80) { // Threshold to trigger delete
           row.style.transform = `translateX(-100%)`; // Slide completely out
@@ -979,7 +996,7 @@
                 catch (err) { console.error(err); tg?.showAlert(t("alert_couldnt_delete")); }
                 finally { renderList(); }
               } else {
-                row.style.transform = `translateX(0)`; // Snap back if cancelled
+                row.style.transform = `translateX(0)`; // Cancelled - snap back smoothly
               }
             });
           }, 200);
@@ -987,10 +1004,14 @@
           row.style.transform = `translateX(0)`; // Snap back if threshold not reached
         }
         currentX = 0;
-      });
+        axisLocked = null;
+      }
+
+      row.addEventListener("touchend", finishSwipe);
+      row.addEventListener("touchcancel", finishSwipe); // interrupted touch (call, system gesture) can no longer leave the row stuck mid-swipe
 
       row.addEventListener("click", () => {
-        if (Math.abs(currentX) > 10) return; // Prevent click if user was swiping
+        if (didSwipe) { didSwipe = false; return; } // Prevent click-through right after a swipe
         openEditScreen(r);
       });
 
