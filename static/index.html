@@ -78,6 +78,13 @@
   .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--hint); }
   .badge svg { width: 13px; height: 13px; }
   .row-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--hint); }
+
+  /* Animated Swipe-to-Delete */
+  .list-row-wrapper { position: relative; overflow: hidden; border-bottom: 0.5px solid var(--divider); }
+  .list-row-wrapper:last-child { border-bottom: none; }
+  .list-row { position: relative; z-index: 2; background: var(--section-bg); transition: transform 0.2s ease; border-bottom: none !important; }
+  .list-row.swiping { transition: none; }
+  .swipe-delete-bg { position: absolute; inset: 0; background: var(--destructive); display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: #ffffff; z-index: 1; }
   
   /* Accent Row */
   .accent-row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 0.5px solid var(--divider); cursor: pointer; }
@@ -930,44 +937,66 @@
       const displayText = r.text
         ? (r.use_message_pool ? (poolVariants(r.text)[0] || r.text) : r.text)
         : `📷 ${t("photo_only_label")}`;
-      const row = document.createElement("div"); row.className = "list-row"; row.dataset.id = r.id;
+      const wrapper = document.createElement("div");
+      wrapper.className = "list-row-wrapper";
+      wrapper.dataset.id = r.id;
+
+      const bg = document.createElement("div");
+      bg.className = "swipe-delete-bg";
+      bg.innerHTML = ICONS.trash;
+
+      const row = document.createElement("div");
+      row.className = "list-row";
       row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let isSwiping = false;
 
-      row.addEventListener('touchstart', e => {
-          touchStartX = e.changedTouches[0].screenX;
-          touchStartY = e.changedTouches[0].screenY;
-          isSwiping = false;
-      }, {passive: true});
+      let startX = 0, currentX = 0, isDragging = false;
 
-      row.addEventListener('touchmove', e => {
-          const deltaX = Math.abs(e.changedTouches[0].screenX - touchStartX);
-          const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
-          if (deltaX > 15 || deltaY > 15) isSwiping = true;
-      }, {passive: true});
+      row.addEventListener("touchstart", (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+        row.classList.add("swiping");
+      }, { passive: true });
 
-      row.addEventListener('touchend', e => {
-          const touchEndX = e.changedTouches[0].screenX;
-          if (isSwiping && touchStartX - touchEndX > 60) {
-              tg?.showConfirm(t("confirm_delete"), async (confirmed) => {
-                  if (!confirmed) return;
-                  const rRow = listContainer.querySelector(`[data-id="${r.id}"]`);
-                  if (rRow) rRow.remove();
-                  if (!listContainer.children.length) emptyState.style.display = "block";
-                  try { await deleteReminderApi(r.id); }
-                  catch (err) { console.error(err); tg?.showAlert(t("alert_couldnt_delete")); }
-                  finally { renderList(); }
-              });
-          }
+      row.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX - startX;
+        if (currentX < 0) row.style.transform = `translateX(${currentX}px)`; // Swipe left only
+      }, { passive: true });
+
+      row.addEventListener("touchend", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        row.classList.remove("swiping");
+
+        if (currentX < -80) { // Threshold to trigger delete
+          row.style.transform = `translateX(-100%)`; // Slide completely out
+          setTimeout(() => {
+            tg?.showConfirm(t("confirm_delete"), async (confirmed) => {
+              if (confirmed) {
+                wrapper.remove();
+                if (!listContainer.children.length) emptyState.style.display = "block";
+                try { await deleteReminderApi(r.id); }
+                catch (err) { console.error(err); tg?.showAlert(t("alert_couldnt_delete")); }
+                finally { renderList(); }
+              } else {
+                row.style.transform = `translateX(0)`; // Snap back if cancelled
+              }
+            });
+          }, 200);
+        } else {
+          row.style.transform = `translateX(0)`; // Snap back if threshold not reached
+        }
+        currentX = 0;
       });
 
-      row.addEventListener("click", (e) => {
-          if (isSwiping) return; // Prevent click from firing if it was a swipe
-          openEditScreen(r);
+      row.addEventListener("click", () => {
+        if (Math.abs(currentX) > 10) return; // Prevent click if user was swiping
+        openEditScreen(r);
       });
-      listContainer.appendChild(row);
+
+      wrapper.appendChild(bg);
+      wrapper.appendChild(row);
+      listContainer.appendChild(wrapper);
     });
   }
 
