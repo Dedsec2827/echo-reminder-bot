@@ -1,3 +1,5 @@
+Now the iOS viewport-zoom-reset removal:Now Task 3 — fix the "Once" data-loss bug in `saveReminder()`:Now Task 4 — HTML: add the new weekly-days picker and tag the exceptions weekday field for toggling:Now the JS: element references, state, UI toggling, click handler, weekday helpers, and wiring into save/load/create flows.Now update `saveReminder()` to add the weekly branch and the `exclude_weekdays` payload logic:Now update the payload's `exclude_weekdays` field:Now update `updateScheduleUI()` to show/hide the new field and hide the general exceptions weekday control during Weekly:Now add the weekly-days UI setter and click handler, right after the existing `setExcludeWeekdaysUI`/its listener:Now wire defaults into `openCreateScreen()` and `openEditScreen()`:JS syntax is valid. Let me do a final visual sanity check of the key edited regions before outputting.Everything is wired correctly. Now let me output the complete updated file as requested.All four fixes are implemented and the JS parses cleanly. Here is the complete updated `index.html`:Now I have the complete, verified content of every section. Here is the full updated `index.html`:
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,9 +91,9 @@
      Touch feedback instead uses the .pressed class below, added/removed explicitly by
      the pointer-event handlers so it can never get left on. */
   @media (hover: hover) and (pointer: fine) {
-    .list-row:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+    .list-row:active { background: color-mix(in srgb, var(--hint) 15%, var(--section-bg)); }
   }
-  .list-row.pressed { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+  .list-row.pressed { background: color-mix(in srgb, var(--hint) 15%, var(--section-bg)); }
   .list-row:focus { outline: none; }
   .row-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--secondary-bg); color: var(--link); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .row-icon svg { width: 18px; height: 18px; }
@@ -129,7 +131,7 @@
   .field { padding: 10px 14px; border-bottom: 0.5px solid var(--divider); }
   .field:last-child { border-bottom: none; }
   .field label { display: block; font-size: 13px; color: var(--hint); margin-bottom: 4px; }
-  .field input, .field textarea, .field select { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font-size: 16px; font-family: inherit; padding: 0; resize: none; }
+  .field input, .field select, .field textarea { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font-size: 16px !important; font-family: inherit; padding: 0; resize: none; }
   .field textarea { min-height: 60px; }
   
   /* Pool Message Additions */
@@ -287,6 +289,18 @@
         <label for="f-date" data-i18n="date_label">Date</label>
         <input type="date" id="f-date">
       </div>
+      <div class="field" id="field-weekly-days" style="display:none;">
+        <label data-i18n="repeat_on_label">Repeat on</label>
+        <div class="segmented weekday-segmented" id="f-weekly-days">
+          <button type="button" class="segment" data-value="0" data-i18n="wd_mon">Mon</button>
+          <button type="button" class="segment" data-value="1" data-i18n="wd_tue">Tue</button>
+          <button type="button" class="segment" data-value="2" data-i18n="wd_wed">Wed</button>
+          <button type="button" class="segment" data-value="3" data-i18n="wd_thu">Thu</button>
+          <button type="button" class="segment" data-value="4" data-i18n="wd_fri">Fri</button>
+          <button type="button" class="segment" data-value="5" data-i18n="wd_sat">Sat</button>
+          <button type="button" class="segment" data-value="6" data-i18n="wd_sun">Sun</button>
+        </div>
+      </div>
       <div class="field" id="field-daily-times" style="display:none;">
         <label id="daily-times-label">Times</label>
         <div id="daily-times-list"></div>
@@ -311,7 +325,7 @@
 
     <div class="section-label" id="section-exceptions-label" style="display:none;" data-i18n="section_exceptions">Exceptions</div>
     <div class="form-section" id="exceptions-section" style="display:none;">
-      <div class="field">
+      <div class="field" id="field-exclude-weekdays">
         <label data-i18n="exclude_weekdays_label">Skip these weekdays</label>
         <div class="segmented weekday-segmented" id="f-exclude-weekdays">
           <button type="button" class="segment" data-value="0" data-i18n="wd_mon">Mon</button>
@@ -399,32 +413,6 @@
   }
   tg?.lockOrientation && tg.lockOrientation('portrait');
 
-  // --- iOS WebKit native-picker fullscreen-zoom guard ---------------------------------
-  // On some iOS WebKit builds, opening a native <input type="date"/"time"> or <select>
-  // picker while running inside Telegram's fullscreen WebView can leave the page
-  // permanently pinch-zoomed and/or scrolled after the picker closes, effectively
-  // trapping the user. Nudging the viewport meta tag (a well-known WebKit reflow trick)
-  // and scrolling back to the top as soon as the field loses focus reliably clears that
-  // stuck state. Delegated on document + capture phase so it also covers time/date
-  // inputs added dynamically later (daily time rows, exclude-date rows, etc.).
-  const viewportMeta = document.querySelector('meta[name="viewport"]');
-  function resetViewportZoom() {
-    if (!viewportMeta) return;
-    const original = viewportMeta.getAttribute("content");
-    viewportMeta.setAttribute("content", original + ", maximum-scale=1.0");
-    requestAnimationFrame(() => {
-      viewportMeta.setAttribute("content", original);
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-    });
-  }
-  function isNativePickerEl(el) {
-    if (!el || !el.tagName) return false;
-    return el.tagName === "SELECT" || (el.tagName === "INPUT" && (el.type === "date" || el.type === "time"));
-  }
-  document.addEventListener("focusout", (e) => { if (isNativePickerEl(e.target)) resetViewportZoom(); }, true);
-  document.addEventListener("change", (e) => { if (isNativePickerEl(e.target)) resetViewportZoom(); }, true);
-
   const API = "/api";
   const initData = tg?.initData || "";
 
@@ -476,6 +464,7 @@
       seg_daily: "Daily",
       seg_weekly: "Weekly",
       seg_yearly: "Yearly",
+      repeat_on_label: "Repeat on",
       enddate_label: "End date (optional)",
       enddate_hint: "Leave empty to repeat forever, or pick a date to stop.",
       section_exceptions: "Exceptions",
@@ -501,6 +490,7 @@
       alert_choose_route: "Please choose where to send this reminder.",
       alert_choose_time: "Please choose a time.",
       alert_choose_date: "Please choose a date.",
+      alert_choose_weekday: "Please choose at least one day of the week.",
       alert_past_time: "That time has already passed — please pick a later one.",
       alert_couldnt_load_reminders: "Couldn't load your reminders. Please try again.",
       alert_couldnt_load_chats: "Couldn't load your chats.",
@@ -562,6 +552,7 @@
       seg_daily: "Щодня",
       seg_weekly: "Щотижня",
       seg_yearly: "Щороку",
+      repeat_on_label: "Дні повтору",
       enddate_label: "Дата завершення (необов’язково)",
       enddate_hint: "Залиште порожнім, щоб повторювати завжди, або оберіть дату завершення.",
       section_exceptions: "Винятки",
@@ -587,6 +578,7 @@
       alert_choose_route: "Оберіть, куди надіслати нагадування.",
       alert_choose_time: "Оберіть час.",
       alert_choose_date: "Оберіть дату.",
+      alert_choose_weekday: "Оберіть принаймні один день тижня.",
       alert_past_time: "Цей час уже минув — оберіть пізніший.",
       alert_couldnt_load_reminders: "Не вдалося завантажити нагадування. Спробуйте ще раз.",
       alert_couldnt_load_chats: "Не вдалося завантажити чати.",
@@ -648,6 +640,7 @@
       seg_daily: "Ամեն օր",
       seg_weekly: "Ամեն շաբաթ",
       seg_yearly: "Ամեն տարի",
+      repeat_on_label: "Կրկնության օրերը",
       enddate_label: "Ավարտի ամսաթիվ (ընտրովի)",
       enddate_hint: "Թողեք դատարկ՝ միշտ կրկնելու համար, կամ ընտրեք ամսաթիվ՝ դադարեցնելու համար։",
       section_exceptions: "Բացառություններ",
@@ -673,6 +666,7 @@
       alert_choose_route: "Ընտրեք, թե ուր ուղարկել հիշեցումը։",
       alert_choose_time: "Ընտրեք ժամ։",
       alert_choose_date: "Ընտրեք ամսաթիվ։",
+      alert_choose_weekday: "Ընտրեք առնվազն մեկ օր՝ շաբաթվա ընթացքում։",
       alert_past_time: "Այս ժամն արդեն անցել է․ ընտրեք ավելի ուշ։",
       alert_couldnt_load_reminders: "Չհաջողվեց բեռնել հիշեցումները։ Փորձեք կրկին։",
       alert_couldnt_load_chats: "Չհաջողվեց բեռնել զրույցները։",
@@ -762,6 +756,8 @@
   const dailyTimesList = document.getElementById("daily-times-list");
   const btnAddTime = document.getElementById("btn-add-time");
   const fDate = document.getElementById("f-date");
+  const fieldWeeklyDays = document.getElementById("field-weekly-days");
+  const weeklyDaysControl = document.getElementById("f-weekly-days");
   const fieldEndDate = document.getElementById("field-enddate");
   const fEndDate = document.getElementById("f-enddate");
   const enddateHint = document.getElementById("enddate-hint");
@@ -777,6 +773,7 @@
 
   const sectionExceptionsLabel = document.getElementById("section-exceptions-label");
   const exceptionsSection = document.getElementById("exceptions-section");
+  const fieldExcludeWeekdays = document.getElementById("field-exclude-weekdays");
   const excludeWeekdaysControl = document.getElementById("f-exclude-weekdays");
   const excludeDateInput = document.getElementById("f-exclude-date-input");
   const btnAddExcludeDate = document.getElementById("btn-add-exclude-date");
@@ -803,6 +800,10 @@
   let pendingDeleteUrl = null;
   let pendingDeleteMessageId = null;
   let currentRecurrence = "none";
+  // Which weekdays (0=Mon..6=Sun) a Weekly reminder fires on, picked positively in its
+  // own field. Saved through the same exclude_weekdays payload as the general exceptions
+  // control below, just inverted: on save we send the *unselected* days as exclude_weekdays.
+  let weeklyDays = [];
   let excludeWeekdays = [];
   let excludeDates = [];
   let chatsCache = [];
@@ -907,6 +908,28 @@
     }
     const [hh, mm] = list[0].split(":").map(Number);
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0, 0);
+  }
+
+  // Converts a JS Date's getDay() (0=Sun..6=Sat) to this app's weekday convention
+  // (0=Mon..6=Sun), matching the data-value on every weekday segmented button.
+  function weekdayIndexFromDate(date) { return (date.getDay() + 6) % 7; }
+
+  // Given the (0=Mon..6=Sun) weekdays a Weekly reminder should fire on and its list of
+  // "HH:MM" times, finds the next upcoming local Date matching one of those weekdays -
+  // today included, if a later time slot on today's weekday hasn't passed yet.
+  function nextWeeklyRunDate(days, times) {
+    const sortedTimes = [...times].sort();
+    const now = new Date();
+    for (let offset = 0; offset < 8; offset++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      if (!days.includes(weekdayIndexFromDate(day))) continue;
+      for (const timeStr of sortedTimes) {
+        const [hh, mm] = timeStr.split(":").map(Number);
+        const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm, 0, 0);
+        if (candidate > now) return candidate;
+      }
+    }
+    return now; // Unreachable with a valid (non-empty) day selection and times list.
   }
 
   function updateDailyTimesRemoveButtons() {
@@ -1075,6 +1098,12 @@
 
       row.addEventListener("pointerup", finishSwipe);
       row.addEventListener("pointercancel", finishSwipe); // interrupted gesture (call, system gesture) can no longer leave the row stuck mid-swipe or highlighted
+      // Extra safety net: while the gesture is still undetermined (before axisLocked is
+      // set and pointer capture kicks in), a fast finger can leave the row's box without
+      // ever firing pointerup/pointercancel on some WebKit builds. Once captured for a
+      // horizontal swipe this never fires (capture suppresses boundary events), so it
+      // only guards the plain-tap/pre-lock window - exactly where "pressed" could stick.
+      row.addEventListener("pointerleave", finishSwipe);
 
       row.addEventListener("click", () => {
         if (didSwipe) { didSwipe = false; return; } // Prevent click-through right after a swipe
@@ -1230,12 +1259,15 @@
   function updateScheduleUI() {
     const isDaily = currentRecurrence === "daily";
     const isOnce = currentRecurrence === "none";
+    const isWeekly = currentRecurrence === "weekly";
     const isRecurring = !isOnce;
     // Multiple times per day are now available for every recurrence - Once, Daily,
-    // Weekly, and Yearly all use the same multi-time list (dailyTimesList). Weekly and
-    // Yearly still anchor to the date picked in fDate (weekday for weekly, month/day for
-    // yearly); only the "how many times that day" part is what's now shared with Daily.
-    fieldDatetime.style.display = isDaily ? "none" : "block";
+    // Weekly, and Yearly all use the same multi-time list (dailyTimesList). Yearly still
+    // anchors to the date picked in fDate (month/day); Weekly anchors to its own weekday
+    // picker below instead of a single date. Only the "how many times that day" part is
+    // what's shared with Daily.
+    fieldDatetime.style.display = (isDaily || isWeekly) ? "none" : "block";
+    fieldWeeklyDays.style.display = isWeekly ? "block" : "none";
     fieldDailyTimes.style.display = "block";
     // "Each time creates its own one-time reminder" only applies to a brand-new Once
     // reminder - for every recurring option the times list stays part of one reminder.
@@ -1249,6 +1281,10 @@
     if (!isRecurring) fEndDate.value = "";
     sectionExceptionsLabel.style.display = isRecurring ? "block" : "none";
     exceptionsSection.style.display = isRecurring ? "block" : "none";
+    // Weekly expresses its pattern positively via the picker above, so the general
+    // "skip these weekdays" exceptions control is hidden - showing both would let the
+    // user set two conflicting weekday rules at once. "Skip specific dates" still applies.
+    fieldExcludeWeekdays.style.display = isWeekly ? "none" : "block";
   }
 
   recurrenceControl.addEventListener("click", (event) => {
@@ -1263,6 +1299,20 @@
     recurrenceControl.querySelectorAll(".segment").forEach((s) => s.classList.toggle("active", s.dataset.value === currentRecurrence));
     updateScheduleUI();
   }
+
+  function setWeeklyDaysUI(values) {
+    const active = new Set((values || []).map(Number));
+    weeklyDaysControl.querySelectorAll(".segment").forEach((s) => {
+      s.classList.toggle("active", active.has(parseInt(s.dataset.value, 10)));
+    });
+  }
+
+  weeklyDaysControl.addEventListener("click", (event) => {
+    const btn = event.target.closest(".segment"); if (!btn) return;
+    btn.classList.toggle("active");
+    weeklyDays = Array.from(weeklyDaysControl.querySelectorAll(".segment.active")).map((s) => parseInt(s.dataset.value, 10));
+    markDirty();
+  });
 
   function setExcludeWeekdaysUI(values) {
     const active = new Set((values || []).map(Number));
@@ -1319,6 +1369,7 @@
     const slot = defaultSlot();
     fDate.value = toDateInputValue(slot); renderDailyTimes([toTimeValue(slot)]); fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
+    weeklyDays = [weekdayIndexFromDate(slot)]; setWeeklyDaysUI(weeklyDays);
     excludeWeekdays = []; excludeDates = []; setExcludeWeekdaysUI(excludeWeekdays); renderExcludeDates();
     fSnoozeOpt1.value = 15; fSnoozeOpt2.value = 60; fSnoozeOpt3.value = 1440; updateSnoozeOptionsUI();
     renderMediaThumbnails(); fMediaFile.value = "";
@@ -1363,6 +1414,18 @@
     updateSnoozeOptionsUI();
     setRecurrenceControl(reminder.recurrence || "none");
     excludeWeekdays = reminder.exclude_weekdays || []; excludeDates = reminder.exclude_dates || [];
+    if (reminder.recurrence === "weekly") {
+      // The saved exclude_weekdays IS the complement of the days this Weekly reminder
+      // actually fires on - invert it back to get the picker's selection.
+      const excluded = new Set(excludeWeekdays.map(Number));
+      weeklyDays = [0, 1, 2, 3, 4, 5, 6].filter((d) => !excluded.has(d));
+      if (weeklyDays.length === 0) weeklyDays = [weekdayIndexFromDate(new Date(reminder.run_date))];
+    } else {
+      // Not currently Weekly, but keep a sane default ready in case the user switches
+      // recurrence to Weekly while editing this reminder.
+      weeklyDays = [weekdayIndexFromDate(new Date(reminder.run_date))];
+    }
+    setWeeklyDaysUI(weeklyDays);
     setExcludeWeekdaysUI(excludeWeekdays); renderExcludeDates();
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
@@ -1394,19 +1457,24 @@
     if (currentRecurrence === "daily") {
       dailyTimesPayload = times;
       runDateIso = nextDailyRunDate(times).toISOString();
+    } else if (currentRecurrence === "weekly") {
+      if (weeklyDays.length === 0) return tg?.showAlert(t("alert_choose_weekday"));
+      dailyTimesPayload = times;
+      runDateIso = nextWeeklyRunDate(weeklyDays, times).toISOString();
     } else {
       if (!fDate.value) return tg?.showAlert(t("alert_choose_date"));
       const first = combineDateTime(fDate.value, times[0]);
       if (currentRecurrence === "none") {
-        if (currentReminderId === null) {
-          if (first <= new Date()) return tg?.showAlert(t("alert_past_time"));
-          // Every time for a brand-new "Once" reminder - the backend combines the date with each
-          // time and creates one independent one-off reminder per time.
-          dailyTimesPayload = times;
-        }
+        // Only a brand-new "Once" reminder needs the past-time guard - an existing one
+        // being edited is allowed to keep (or adjust) a time that's already elapsed.
+        if (currentReminderId === null && first <= new Date()) return tg?.showAlert(t("alert_past_time"));
+        // Always set for "Once", new or existing - a brand-new one lets the backend combine
+        // the date with each time into one independent one-off reminder per time; editing an
+        // existing one must resend its times too, or they're wiped out on save.
+        dailyTimesPayload = times;
       } else {
-        // Weekly/Yearly: same multi-time list as Daily, just anchored to this date
-        // (weekday for weekly, month/day for yearly) instead of firing every day.
+        // Yearly: same multi-time list as Daily, just anchored to this date's month/day
+        // instead of firing every day.
         dailyTimesPayload = times;
       }
       runDateIso = first.toISOString();
@@ -1425,7 +1493,9 @@
       end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
       tz_offset_minutes: -new Date(runDateIso).getTimezoneOffset(),
       snooze_options: snooze_options_payload,
-      exclude_weekdays: isRecurring ? excludeWeekdays : [],
+      exclude_weekdays: currentRecurrence === "weekly"
+        ? [0, 1, 2, 3, 4, 5, 6].filter((d) => !weeklyDays.includes(d))
+        : (isRecurring ? excludeWeekdays : []),
       exclude_dates: isRecurring ? excludeDates : [],
     };
     tg?.MainButton.showProgress();

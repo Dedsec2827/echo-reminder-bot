@@ -422,46 +422,70 @@ def compute_next_run_date(
             return True
         return False
 
-    if daily_times and recurrence in ("daily", "none"):
-        # Multiple times per local day: pick the next one still ahead, or the earliest
-        # time on the next local day (daily only) if every slot has already fired.
-        parsed: list[tuple[int, int]] = []
-        for t in daily_times:
-            try:
-                hh, mm = t.split(":")
-                parsed.append((int(hh), int(mm)))
-            except (ValueError, AttributeError):
-                continue
-        if parsed:
-            parsed.sort()
-            if recurrence == "daily":
-                # Walk forward day by day (366-day failsafe) until a non-excluded local
-                # date has a still-ahead slot.
-                day_local = now_local
-                iterations = 0
-                while iterations < 366:
-                    for hh, mm in parsed:
-                        candidate_local = day_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                        candidate_utc = candidate_local - offset
-                        if candidate_utc > now and not _is_excluded(candidate_utc):
-                            return candidate_utc.isoformat()
-                    day_local = day_local + timedelta(days=1)
-                    iterations += 1
-                # Failsafe exhausted - every day in range was excluded or already passed.
-                return None
-            # "none": multi-time single-day "Once" reminder - all remaining slots share
-            # the same local date, so if that date is excluded none of them can fire.
-            base_local = parse_iso_utc(current_run_date_iso) + offset
-            for hh, mm in parsed:
-                candidate_local = base_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                candidate_utc = candidate_local - offset
-                if candidate_utc > now and not _is_excluded(candidate_utc):
-                    return candidate_utc.isoformat()
-            return None
+    # Parse + sort daily_times once, up front, for EVERY recurrence type (daily, weekly,
+    # yearly, none) - previously this was only done for "daily"/"none", so "weekly" and
+    # "yearly" silently ignored multi-time schedules entirely.
+    parsed_times: list[tuple[int, int]] = []
+    for t in (daily_times or []):
+        try:
+            hh, mm = t.split(":")
+            parsed_times.append((int(hh), int(mm)))
+        except (ValueError, AttributeError):
+            continue
+    parsed_times.sort()
+
+    if parsed_times and recurrence == "none":
+        # "none": multi-time single-day "Once" reminder - all remaining slots share
+        # the same local date, so if that date is excluded none of them can fire.
+        base_local = parse_iso_utc(current_run_date_iso) + offset
+        for hh, mm in parsed_times:
+            candidate_local = base_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            candidate_utc = candidate_local - offset
+            if candidate_utc > now and not _is_excluded(candidate_utc):
+                return candidate_utc.isoformat()
+        return None
 
     if recurrence not in RECURRING_TYPES:
         raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
 
+    def _advance_day(day_local: datetime) -> datetime:
+        """Jump a *local* day marker forward by one recurrence interval (used to pick the
+        next candidate day once every slot on the current candidate day has passed)."""
+        if recurrence == "yearly":
+            try:
+                return day_local.replace(year=day_local.year + 1)
+            except ValueError:
+                return day_local.replace(year=day_local.year + 1, day=28)
+        if recurrence == "weekly":
+            return day_local + timedelta(days=7)
+        return day_local + timedelta(days=1)  # daily
+
+    if parsed_times:
+        # Multiple times per local day, for daily/weekly/yearly alike: iterate through the
+        # day's slots (sorted) to find the next still-ahead, non-excluded UTC moment; if every
+        # slot on the current candidate day has already passed (or the day is excluded), use
+        # _advance_day to jump to the next valid candidate day. 366-iteration failsafe against
+        # infinite loops (e.g. every remaining candidate excluded).
+        #
+        # "daily" anchors the search on "now" so a stale current_run_date (e.g. after bot
+        # downtime) doesn't burn iterations catching up. "weekly"/"yearly" anchor on
+        # current_run_date's local day instead, so the target weekday / day-of-year is
+        # preserved, then step forward by the interval from there.
+        day_local = now_local if recurrence == "daily" else parse_iso_utc(current_run_date_iso) + offset
+        iterations = 0
+        while iterations < 366:
+            for hh, mm in parsed_times:
+                candidate_local = day_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+                candidate_utc = candidate_local - offset
+                if candidate_utc > now and not _is_excluded(candidate_utc):
+                    return candidate_utc.isoformat()
+            day_local = _advance_day(day_local)
+            iterations += 1
+        # Failsafe exhausted - every day in range was excluded or already passed.
+        return None
+
+    # No daily_times (or none of them parsed): single slot per period, just advance the
+    # timestamp itself by one recurrence interval at a time.
     def _advance(dt: datetime) -> datetime:
         if recurrence == "yearly":
             try:
