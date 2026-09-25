@@ -129,6 +129,19 @@
   .segment { flex: 1; padding: 7px 0; border: none; border-radius: 7px; background: transparent; color: var(--hint); font-size: 13px; font-weight: 600; }
   .segment.active { background: var(--section-bg); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
 
+  /* Weekday segmented control (7-way, scrolls horizontally if it doesn't fit) */
+  .segmented.weekday-segmented { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .segmented.weekday-segmented::-webkit-scrollbar { display: none; }
+  .segmented.weekday-segmented .segment { flex: 0 0 auto; min-width: 42px; padding: 7px 10px; }
+
+  /* Exception dates */
+  .exclude-date-row { display: flex; align-items: center; gap: 8px; }
+  .exclude-date-row input[type="date"] { flex: 1; border: none; outline: none; background: var(--secondary-bg); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 15px; font-family: inherit; }
+  .date-pill-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .date-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: 14px; background: var(--secondary-bg); color: var(--text); font-size: 13px; }
+  .date-pill-remove { border: none; background: transparent; color: var(--hint); font-size: 15px; line-height: 1; padding: 2px; display: flex; align-items: center; justify-content: center; }
+  .date-pill-remove:active { opacity: 0.6; }
+
   /* Switch */
   .switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
@@ -265,6 +278,30 @@
     <p class="section-hint" id="extra-times-hint" style="display:none;" data-i18n="extra_times_hint"></p>
     <p class="section-hint" id="enddate-hint" style="display:none;" data-i18n="enddate_hint">Leave empty to repeat forever, or pick a date to stop.</p>
 
+    <div class="section-label" id="section-exceptions-label" style="display:none;" data-i18n="section_exceptions">Exceptions</div>
+    <div class="form-section" id="exceptions-section" style="display:none;">
+      <div class="field">
+        <label data-i18n="exclude_weekdays_label">Skip these weekdays</label>
+        <div class="segmented weekday-segmented" id="f-exclude-weekdays">
+          <button type="button" class="segment" data-value="0" data-i18n="wd_mon">Mon</button>
+          <button type="button" class="segment" data-value="1" data-i18n="wd_tue">Tue</button>
+          <button type="button" class="segment" data-value="2" data-i18n="wd_wed">Wed</button>
+          <button type="button" class="segment" data-value="3" data-i18n="wd_thu">Thu</button>
+          <button type="button" class="segment" data-value="4" data-i18n="wd_fri">Fri</button>
+          <button type="button" class="segment" data-value="5" data-i18n="wd_sat">Sat</button>
+          <button type="button" class="segment" data-value="6" data-i18n="wd_sun">Sun</button>
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="exclude_dates_label">Skip specific dates</label>
+        <div class="exclude-date-row">
+          <input type="date" id="f-exclude-date-input">
+          <button type="button" class="pill-btn" id="btn-add-exclude-date" data-i18n="add_date_btn">+ Add</button>
+        </div>
+        <div id="exclude-dates-list" class="date-pill-list"></div>
+      </div>
+    </div>
+
     <div class="section-label" data-i18n="section_destination">Destination</div>
     <div class="form-section">
       <div class="field">
@@ -384,6 +421,11 @@
       seg_yearly: "Yearly",
       enddate_label: "End date (optional)",
       enddate_hint: "Leave empty to repeat forever, or pick a date to stop.",
+      section_exceptions: "Exceptions",
+      exclude_weekdays_label: "Skip these weekdays",
+      wd_mon: "Mon", wd_tue: "Tue", wd_wed: "Wed", wd_thu: "Thu", wd_fri: "Fri", wd_sat: "Sat", wd_sun: "Sun",
+      exclude_dates_label: "Skip specific dates",
+      add_date_btn: "+ Add",
       section_destination: "Destination",
       route_label: "Send to",
       section_buttons: "Buttons",
@@ -465,6 +507,11 @@
       seg_yearly: "Щороку",
       enddate_label: "Дата завершення (необов’язково)",
       enddate_hint: "Залиште порожнім, щоб повторювати завжди, або оберіть дату завершення.",
+      section_exceptions: "Винятки",
+      exclude_weekdays_label: "Пропускати ці дні тижня",
+      wd_mon: "Пн", wd_tue: "Вт", wd_wed: "Ср", wd_thu: "Чт", wd_fri: "Пт", wd_sat: "Сб", wd_sun: "Нд",
+      exclude_dates_label: "Пропускати конкретні дати",
+      add_date_btn: "+ Додати",
       section_destination: "Призначення",
       route_label: "Надіслати до",
       section_buttons: "Кнопки",
@@ -546,6 +593,11 @@
       seg_yearly: "Ամեն տարի",
       enddate_label: "Ավարտի ամսաթիվ (ընտրովի)",
       enddate_hint: "Թողեք դատարկ՝ միշտ կրկնելու համար, կամ ընտրեք ամսաթիվ՝ դադարեցնելու համար։",
+      section_exceptions: "Բացառություններ",
+      exclude_weekdays_label: "Բաց թողնել այս օրերը",
+      wd_mon: "Երկ", wd_tue: "Երք", wd_wed: "Չրք", wd_thu: "Հնգ", wd_fri: "Ուր", wd_sat: "Շբթ", wd_sun: "Կիր",
+      exclude_dates_label: "Բաց թողնել կոնկրետ ամսաթվեր",
+      add_date_btn: "+ Ավելացնել",
       section_destination: "Ուղղություն",
       route_label: "Ուղարկել",
       section_buttons: "Կոճակներ",
@@ -666,6 +718,13 @@
   const trackerSub = document.getElementById("tracker-sub");
   const recurrenceControl = document.getElementById("f-recurrence");
 
+  const sectionExceptionsLabel = document.getElementById("section-exceptions-label");
+  const exceptionsSection = document.getElementById("exceptions-section");
+  const excludeWeekdaysControl = document.getElementById("f-exclude-weekdays");
+  const excludeDateInput = document.getElementById("f-exclude-date-input");
+  const btnAddExcludeDate = document.getElementById("btn-add-exclude-date");
+  const excludeDatesList = document.getElementById("exclude-dates-list");
+
   const fMediaFile = document.getElementById("f-media-file");
   const btnUploadImage = document.getElementById("btn-upload-image");
   const uploadBtnLabel = document.getElementById("upload-btn-label");
@@ -687,6 +746,8 @@
   let pendingDeleteUrl = null;
   let pendingDeleteMessageId = null;
   let currentRecurrence = "none";
+  let excludeWeekdays = [];
+  let excludeDates = [];
   let chatsCache = [];
   let chatsById = new Map();
   let isDirty = false;
@@ -1020,6 +1081,8 @@
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
     if (!isRecurring) fEndDate.value = "";
+    sectionExceptionsLabel.style.display = isRecurring ? "block" : "none";
+    exceptionsSection.style.display = isRecurring ? "block" : "none";
   }
 
   recurrenceControl.addEventListener("click", (event) => {
@@ -1034,6 +1097,42 @@
     recurrenceControl.querySelectorAll(".segment").forEach((s) => s.classList.toggle("active", s.dataset.value === currentRecurrence));
     updateScheduleUI();
   }
+
+  function setExcludeWeekdaysUI(values) {
+    const active = new Set((values || []).map(Number));
+    excludeWeekdaysControl.querySelectorAll(".segment").forEach((s) => {
+      s.classList.toggle("active", active.has(parseInt(s.dataset.value, 10)));
+    });
+  }
+
+  excludeWeekdaysControl.addEventListener("click", (event) => {
+    const btn = event.target.closest(".segment"); if (!btn) return;
+    btn.classList.toggle("active");
+    excludeWeekdays = Array.from(excludeWeekdaysControl.querySelectorAll(".segment.active")).map((s) => parseInt(s.dataset.value, 10));
+    markDirty();
+  });
+
+  function renderExcludeDates() {
+    excludeDatesList.innerHTML = "";
+    excludeDates.forEach((dateStr) => {
+      const pill = document.createElement("div"); pill.className = "date-pill";
+      const label = document.createElement("span"); label.textContent = dateStr;
+      const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "date-pill-remove"; removeBtn.innerHTML = "&times;";
+      removeBtn.addEventListener("click", () => {
+        excludeDates = excludeDates.filter((d) => d !== dateStr);
+        renderExcludeDates(); markDirty();
+      });
+      pill.appendChild(label); pill.appendChild(removeBtn); excludeDatesList.appendChild(pill);
+    });
+  }
+
+  btnAddExcludeDate.addEventListener("click", () => {
+    const value = excludeDateInput.value;
+    if (!value) return;
+    if (!excludeDates.includes(value)) { excludeDates.push(value); excludeDates.sort(); renderExcludeDates(); }
+    excludeDateInput.value = "";
+    markDirty();
+  });
 
   async function populateRoutes(selectedChatId) {
     fRoute.innerHTML = "";
@@ -1054,6 +1153,7 @@
     const slot = defaultSlot();
     fDate.value = toDateInputValue(slot); renderDailyTimes([toTimeValue(slot)]); fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
+    excludeWeekdays = []; excludeDates = []; setExcludeWeekdaysUI(excludeWeekdays); renderExcludeDates();
     fSnoozeOpt1.value = 15; fSnoozeOpt2.value = 60; fSnoozeOpt3.value = 1440; updateSnoozeOptionsUI();
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
@@ -1078,6 +1178,8 @@
     fSnoozeOpt1.value = snoozeOpts[0]; fSnoozeOpt2.value = snoozeOpts[1]; fSnoozeOpt3.value = snoozeOpts[2];
     updateSnoozeOptionsUI();
     setRecurrenceControl(reminder.recurrence || "none");
+    excludeWeekdays = reminder.exclude_weekdays || []; excludeDates = reminder.exclude_dates || [];
+    setExcludeWeekdaysUI(excludeWeekdays); renderExcludeDates();
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
       try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert(t("alert_couldnt_load_chats")); }
@@ -1133,6 +1235,8 @@
       end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
       tz_offset_minutes: -new Date(runDateIso).getTimezoneOffset(),
       snooze_options: snooze_options_payload,
+      exclude_weekdays: isRecurring ? excludeWeekdays : [],
+      exclude_dates: isRecurring ? excludeDates : [],
     };
     tg?.MainButton.showProgress();
     tg?.MainButton.setText(t("saving_label"));

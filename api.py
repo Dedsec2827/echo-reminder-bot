@@ -101,6 +101,9 @@ class ReminderIn(BaseModel):
     # Needed so "HH:MM" strings from the client are combined with the date in local time.
     tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
     snooze_options: Optional[list[int]] = Field(default=[15, 60, 1440])
+    # 0=Monday..6=Sunday
+    exclude_weekdays: Optional[list[int]] = None
+    exclude_dates: Optional[list[str]] = None
 
 
 class ReminderUpdate(BaseModel):
@@ -118,6 +121,8 @@ class ReminderUpdate(BaseModel):
     daily_times: Optional[list[str]] = None
     tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
     snooze_options: Optional[list[int]] = Field(default=[15, 60, 1440])
+    exclude_weekdays: Optional[list[int]] = None
+    exclude_dates: Optional[list[str]] = None
 
 
 class TestSendIn(BaseModel):
@@ -267,6 +272,7 @@ async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[st
         end_date=payload.end_date, use_message_pool=payload.use_message_pool,
         daily_times=payload.daily_times, tz_offset_minutes=payload.tz_offset_minutes or 0,
         snooze_options=payload.snooze_options,
+        exclude_weekdays=payload.exclude_weekdays, exclude_dates=payload.exclude_dates,
     )
     return await db.get_reminder(new_id)
 
