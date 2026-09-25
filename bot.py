@@ -36,89 +36,22 @@ router = Router()
 # Fallback and default language is always English.
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
-        "welcome": (
-            "This is Echo, a reminder and scheduling bot.\n\n"
-            "Functions:\n"
-            "— Scheduling one-off or recurring reminders (daily, weekly, yearly), including multiple "
-            "times per day.\n"
-            "— Administration of groups and channels: add the bot as an administrator to schedule posts "
-            "for a chat or channel.\n"
-            "— Message pool: a set of message variants from which one is selected at random on each send.\n"
-            "— Tracker and snooze controls attached to a reminder message.\n\n"
-            "Use the button below to open the application and create a reminder."
-        ),
-        "help": (
-            "<b>Echo — function reference</b>\n\n"
-            "Open the application with the button below to create a reminder: one-off or recurring "
-            "(daily, weekly, yearly). One or more times may be specified.\n\n"
-            "To post to a group or channel, add the bot there as an administrator. The chat will then "
-            "appear as a destination in the application.\n\n"
-            "<b>Message pool</b>: enter several message variants separated by a blank line. One variant "
-            "is selected at random for each send.\n\n"
-            "<b>Snooze</b> and <b>Tracker</b> may be enabled per reminder. Snooze postpones a reminder by "
-            "a selected interval. Tracker marks a reminder as completed and records a streak count.\n\n"
-            "To reopen the application, send /app."
-        ),
+        "welcome": "Echo is a reminder and scheduled posting bot.\n\nFeatures:\n• Schedule one-off or recurring reminders (daily, weekly, yearly), including multiple specific times per day.\n• Community administration: add the bot as an admin to a group or channel to schedule automated posts.\n• Message pools: create multiple text variants for a single reminder, from which one is randomly selected per delivery.\n• Interactive buttons: attach \"Snooze\" and \"Tracker\" controls to your reminder messages.\n\nTap the button below to open the app and set up a reminder.",
+        "help": "Echo is a reminder and scheduled posting bot.\n\nFeatures:\n• Schedule one-off or recurring reminders (daily, weekly, yearly), including multiple specific times per day.\n• Community administration: add the bot as an admin to a group or channel to schedule automated posts.\n• Message pools: create multiple text variants for a single reminder, from which one is randomly selected per delivery.\n• Interactive buttons: attach \"Snooze\" and \"Tracker\" controls to your reminder messages.\n\nTap the button below to open the app and set up a reminder.",
         "app": "Your reminders:",
         "open_echo": "Open Echo",
         "expired_alert": "Reminder is no longer active or is a test.",
     },
     "uk": {
-        "welcome": (
-            "Це Echo — бот для нагадувань і планування публікацій.\n\n"
-            "Функції:\n"
-            "— Планування одноразових або повторюваних нагадувань (щодня, щотижня, щороку), "
-            "зокрема з кількома часами на день.\n"
-            "— Адміністрування груп і каналів: додайте бота адміністратором, щоб планувати публікації "
-            "в чаті чи каналі.\n"
-            "— Пул повідомлень: набір варіантів тексту, з якого при кожній відправці обирається один "
-            "випадковий.\n"
-            "— Кнопки трекера та відкладення на повідомленні нагадування.\n\n"
-            "Натисніть кнопку нижче, щоб відкрити застосунок і створити нагадування."
-        ),
-        "help": (
-            "<b>Echo — довідка щодо функцій</b>\n\n"
-            "Відкрийте застосунок кнопкою нижче, щоб створити нагадування: одноразове або повторюване "
-            "(щодня, щотижня, щороку). Можна вказати один або кілька часів.\n\n"
-            "Щоб публікувати в групі чи каналі, додайте бота туди адміністратором. Чат з'явиться "
-            "як місце призначення в застосунку.\n\n"
-            "<b>Пул повідомлень</b>: введіть кілька варіантів тексту, розділених порожнім рядком. "
-            "При кожній відправці обирається один випадковий варіант.\n\n"
-            "<b>Відкладення</b> та <b>Трекер</b> можна увімкнути для окремого нагадування. Відкладення "
-            "переносить нагадування на обраний інтервал. Трекер позначає нагадування виконаним і "
-            "веде облік серії виконань.\n\n"
-            "Щоб повторно відкрити застосунок, надішліть /app."
-        ),
+        "welcome": "Це Echo — бот для нагадувань і планування публікацій.\n\nФункції:\n• Планування одноразових або регулярних нагадувань (щодня, щотижня, щороку) із можливістю задати кілька проміжків часу на день.\n• Адміністрування спільнот: додайте бота в групу чи канал із правами адміністратора для автоматичного планування публікацій.\n• Пул повідомлень: створення кількох варіантів тексту, з яких під час відправки випадковим чином обирається один.\n• Інтерактивні кнопки: можливість додати до нагадування відкладення або трекер виконання.\n\nНатисніть кнопку нижче, щоб відкрити застосунок і створити нагадування.",
+        "help": "Це Echo — бот для нагадувань і планування публікацій.\n\nФункції:\n• Планування одноразових або регулярних нагадувань (щодня, щотижня, щороку) із можливістю задати кілька проміжків часу на день.\n• Адміністрування спільнот: додайте бота в групу чи канал із правами адміністратора для автоматичного планування публікацій.\n• Пул повідомлень: створення кількох варіантів тексту, з яких під час відправки випадковим чином обирається один.\n• Інтерактивні кнопки: можливість додати до нагадування відкладення або трекер виконання.\n\nНатисніть кнопку нижче, щоб відкрити застосунок і створити нагадування.",
         "app": "Ваші нагадування:",
         "open_echo": "Відкрити Echo",
         "expired_alert": "Нагадування вже неактивне або є тестовим.",
     },
     "hy": {
-        "welcome": (
-            "Սա Echo-ն է՝ հիշեցումների և հրապարակումների պլանավորման բոտ։\n\n"
-            "Գործառույթներ.\n"
-            "— Մեկանգամյա կամ կրկնվող հիշեցումների պլանավորում (ամեն օր, շաբաթ, տարի), "
-            "այդ թվում՝ օրական մի քանի ժամով։\n"
-            "— Խմբերի և ալիքների կառավարում. ավելացրեք բոտը որպես ադմինիստրատոր՝ չատում կամ "
-            "ալիքում հրապարակումներ պլանավորելու համար։\n"
-            "— Հաղորդագրությունների խումբ. տեքստի տարբերակների ցանկ, որից յուրաքանչյուր ուղարկման "
-            "ժամանակ պատահականորեն ընտրվում է մեկը։\n"
-            "— Հետևող և հետաձգման կոճակներ հիշեցման հաղորդագրության վրա։\n\n"
-            "Օգտագործեք ներքևի կոճակը՝ հավելվածը բացելու և հիշեցում ստեղծելու համար։"
-        ),
-        "help": (
-            "<b>Echo — գործառույթների նկարագիր</b>\n\n"
-            "Բացեք հավելվածը ներքևի կոճակով՝ հիշեցում ստեղծելու համար. մեկանգամյա կամ կրկնվող "
-            "(ամեն օր, շաբաթ, տարի)։ Կարելի է նշել մեկ կամ մի քանի ժամ։\n\n"
-            "Խմբում կամ ալիքում հրապարակելու համար ավելացրեք բոտը այնտեղ որպես ադմինիստրատոր։ "
-            "Չատը հայտնվելու է հավելվածում որպես ուղղություն։\n\n"
-            "<b>Հաղորդագրությունների խումբ</b>. մուտքագրեք մի քանի տեքստային տարբերակ՝ բաժանված "
-            "դատարկ տողով։ Յուրաքանչյուր ուղարկման ժամանակ պատահականորեն ընտրվում է մեկը։\n\n"
-            "<b>Հետաձգում</b> և <b>Հետևող</b> գործառույթները կարող են միացվել առանձին հիշեցման համար։ "
-            "Հետաձգումը հիշեցումը տեղափոխում է ընտրված ժամանակահատվածով։ Հետևողը նշում է հիշեցումը "
-            "կատարված և հաշվում է հաջորդական կատարումների քանակը։\n\n"
-            "Հավելվածը կրկին բացելու համար ուղարկեք /app։"
-        ),
+        "welcome": "Սա Echo-ն է՝ հիշեցումների և հրապարակումների պլանավորման բոտ։\n\nԳործառույթներ.\n• Մեկանգամյա կամ պարբերական (օրական, շաբաթական, տարեկան) հիշեցումների պլանավորում՝ օրվա մեջ մի քանի ժամ նշելու հնարավորությամբ։\n• Համայնքների կառավարում. ավելացրեք բոտը որպես ադմինիստրատոր խմբում կամ ալիքում՝ հրապարակումներ պլանավորելու համար։\n• Հաղորդագրությունների բազա. ավելացրեք տեքստի մի քանի տարբերակ, որոնցից յուրաքանչյուր առաքման ժամանակ պատահականության սկզբունքով կընտրվի մեկը։\n• Ինտերակտիվ կոճակներ. հիշեցմանը կարող եք կցել «Հետաձգել» և «Կատարված» կոճակներ։\n\nՍեղմեք ստորև նշված կոճակը՝ հավելվածը բացելու և հիշեցում ստեղծելու համար։",
+        "help": "Սա Echo-ն է՝ հիշեցումների և հրապարակումների պլանավորման բոտ։\n\nԳործառույթներ.\n• Մեկանգամյա կամ պարբերական (օրական, շաբաթական, տարեկան) հիշեցումների պլանավորում՝ օրվա մեջ մի քանի ժամ նշելու հնարավորությամբ։\n• Համայնքների կառավարում. ավելացրեք բոտը որպես ադմինիստրատոր խմբում կամ ալիքում՝ հրապարակումներ պլանավորելու համար։\n• Հաղորդագրությունների բազա. ավելացրեք տեքստի մի քանի տարբերակ, որոնցից յուրաքանչյուր առաքման ժամանակ պատահականության սկզբունքով կընտրվի մեկը։\n• Ինտերակտիվ կոճակներ. հիշեցմանը կարող եք կցել «Հետաձգել» և «Կատարված» կոճակներ։\n\nՍեղմեք ստորև նշված կոճակը՝ հավելվածը բացելու և հիշեցում ստեղծելու համար։",
         "app": "Ձեր հիշեցումները՝",
         "open_echo": "Բացել Echo-ն",
         "expired_alert": "Հիշեցումն այլևս ակտիվ չէ կամ թեստային է։",
@@ -203,11 +136,25 @@ def _reminder_keyboard(reminder: dict) -> Optional[InlineKeyboardMarkup]:
     if reminder["tracker_enabled"]: buttons.append(InlineKeyboardButton(text="Виконано", callback_data=f"done:{reminder['id']}"))
     return InlineKeyboardMarkup(inline_keyboard=[buttons]) if buttons else None
 
-SNOOZE_OPTIONS: dict[str, int] = {"15m": 15, "1h": 60, "1d": 24 * 60}
-SNOOZE_OPTION_LABELS: dict[str, str] = {"15m": "На 15 хв", "1h": "На 1 годину", "1d": "На завтра"}
+SNOOZE_UNIT_LABELS: dict[str, dict[str, str]] = {
+    "en": {"m": "min", "h": "h", "d": "d"},
+    "uk": {"m": "хв", "h": "год", "d": "дн"},
+    "hy": {"m": "ր", "h": "ժ", "d": "օր"},
+}
 
-def _snooze_picker_keyboard(reminder_id: int) -> InlineKeyboardMarkup:
-    buttons = [InlineKeyboardButton(text=label, callback_data=f"snooze_pick:{reminder_id}:{key}") for key, label in SNOOZE_OPTION_LABELS.items()]
+def format_snooze_label(minutes: int, lang: str) -> str:
+    units = SNOOZE_UNIT_LABELS.get(lang, SNOOZE_UNIT_LABELS["en"])
+    if minutes < 60:
+        return f"{minutes} {units['m']}"
+    if minutes % 60 == 0 and minutes < 1440:
+        return f"{minutes // 60} {units['h']}"
+    if minutes % 1440 == 0:
+        return f"{minutes // 1440} {units['d']}"
+    return f"{minutes} {units['m']}"
+
+def _snooze_picker_keyboard(reminder: dict, lang: str) -> InlineKeyboardMarkup:
+    snooze_opts = reminder.get("snooze_options") or [15, 60, 1440]
+    buttons = [InlineKeyboardButton(text=format_snooze_label(m, lang), callback_data=f"snooze_pick:{reminder['id']}:{m}") for m in snooze_opts]
     return InlineKeyboardMarkup(inline_keyboard=[buttons])
 
 async def _send_message_with_photo(bot: Bot, chat_id: int, text: str, media_url: Optional[str], keyboard: Optional[InlineKeyboardMarkup]) -> None:
@@ -244,25 +191,24 @@ async def send_test_message(bot: Bot, chat_id: int, text: str, media_url: Option
 async def on_snooze(callback: CallbackQuery) -> None:
     reminder_id = int(callback.data.split(":", 1)[1])
     reminder = await db.get_reminder(reminder_id)
+    lang = await db.get_user_language(callback.from_user.id)
     if not reminder:
-        lang = await db.get_user_language(callback.from_user.id)
         return await callback.answer(t(lang, "expired_alert"), show_alert=True)
     await callback.answer()
-    try: await callback.message.edit_reply_markup(reply_markup=_snooze_picker_keyboard(reminder_id))
+    try: await callback.message.edit_reply_markup(reply_markup=_snooze_picker_keyboard(reminder, lang))
     except Exception: pass
 
 @router.callback_query(F.data.startswith("snooze_pick:"))
 async def on_snooze_pick(callback: CallbackQuery) -> None:
-    _, reminder_id_str, option_key = callback.data.split(":", 2)
+    _, reminder_id_str, minutes_str = callback.data.split(":", 2)
     reminder_id = int(reminder_id_str)
+    minutes = int(minutes_str)
     reminder = await db.get_reminder(reminder_id)
+    lang = await db.get_user_language(callback.from_user.id)
     if not reminder:
-        lang = await db.get_user_language(callback.from_user.id)
         return await callback.answer(t(lang, "expired_alert"), show_alert=True)
-    minutes = SNOOZE_OPTIONS.get(option_key)
-    if minutes is None: return await callback.answer()
     new_run_date = await db.snooze_reminder(reminder_id, minutes=minutes)
-    await callback.answer(f"Відкладено: {SNOOZE_OPTION_LABELS[option_key]}")
+    await callback.answer(f"Відкладено: {format_snooze_label(minutes, lang)}")
     try: await callback.message.edit_reply_markup(reply_markup=None)
     except Exception: pass
     logger.info("Reminder %s snoozed until %s", reminder_id, new_run_date)

@@ -20,6 +20,8 @@ RECURRENCE_INTERVALS: dict[str, timedelta] = {
 
 RECURRING_TYPES: frozenset[str] = frozenset({"daily", "weekly", "yearly"})
 
+DEFAULT_SNOOZE_OPTIONS: list[int] = [15, 60, 1440]
+
 _pool: Optional[asyncpg.Pool] = None
 
 
@@ -54,11 +56,27 @@ def parse_daily_times(value: Optional[str]) -> list[str]:
         return []
 
 
+def serialize_snooze_options(snooze_options: Optional[list[int]]) -> Optional[str]:
+    return json.dumps(snooze_options) if snooze_options else None
+
+
+def parse_snooze_options(value: Optional[str]) -> list[int]:
+    if not value:
+        return list(DEFAULT_SNOOZE_OPTIONS)
+    try:
+        data = json.loads(value)
+        result = [int(v) for v in data if isinstance(v, (int, float)) and not isinstance(v, bool)]
+        return result if result else list(DEFAULT_SNOOZE_OPTIONS)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return list(DEFAULT_SNOOZE_OPTIONS)
+
+
 def _reminder_row_to_dict(row: Optional[asyncpg.Record]) -> Optional[dict[str, Any]]:
     if not row:
         return None
     data = dict(row)
     data["daily_times"] = parse_daily_times(data.get("daily_times"))
+    data["snooze_options"] = parse_snooze_options(data.get("snooze_options"))
     return data
 
 
@@ -98,6 +116,7 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         "media_message_id": "ALTER TABLE reminders ADD COLUMN media_message_id BIGINT",
         "daily_times": "ALTER TABLE reminders ADD COLUMN daily_times TEXT",
         "tz_offset_minutes": "ALTER TABLE reminders ADD COLUMN tz_offset_minutes INTEGER NOT NULL DEFAULT 0",
+        "snooze_options": "ALTER TABLE reminders ADD COLUMN snooze_options TEXT DEFAULT '[15, 60, 1440]'",
     }
     for column, ddl in migrations.items():
         if column not in columns:
@@ -157,6 +176,7 @@ async def init_db() -> None:
                 tracker_enabled   INTEGER NOT NULL DEFAULT 0,
                 streak_count      INTEGER NOT NULL DEFAULT 0,
                 tz_offset_minutes INTEGER NOT NULL DEFAULT 0,
+                snooze_options    TEXT DEFAULT '[15, 60, 1440]',
                 created_at        TEXT NOT NULL
             )
             """
@@ -240,19 +260,22 @@ async def create_reminder(
     snooze_enabled: bool = False, tracker_enabled: bool = False, recurrence: str = "none",
     end_date: Optional[str] = None, use_message_pool: bool = False,
     daily_times: Optional[list[str]] = None, tz_offset_minutes: int = 0,
+    snooze_options: Optional[list[int]] = None,
 ) -> int:
     pool = await get_pool()
     new_id = await pool.fetchval(
         """
         INSERT INTO reminders
             (user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
-             use_message_pool, snooze_enabled, tracker_enabled, daily_times, tz_offset_minutes, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             use_message_pool, snooze_enabled, tracker_enabled, daily_times, tz_offset_minutes,
+             snooze_options, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id
         """,
         user_id, chat_id, text, media_url, media_message_id, run_date, recurrence, end_date,
         int(use_message_pool), int(snooze_enabled), int(tracker_enabled),
         serialize_daily_times(daily_times), tz_offset_minutes or 0,
+        serialize_snooze_options(snooze_options),
         utcnow().isoformat(),
     )
     return new_id
@@ -296,13 +319,15 @@ async def update_reminder(reminder_id: int, **fields: Any) -> None:
     allowed = {
         "chat_id", "text", "media_url", "media_message_id", "run_date", "recurrence", "end_date",
         "use_message_pool", "snooze_enabled", "tracker_enabled", "is_active", "daily_times",
-        "tz_offset_minutes",
+        "tz_offset_minutes", "snooze_options",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return
     if "daily_times" in updates and not isinstance(updates["daily_times"], str):
         updates["daily_times"] = serialize_daily_times(updates["daily_times"])
+    if "snooze_options" in updates and not isinstance(updates["snooze_options"], str):
+        updates["snooze_options"] = serialize_snooze_options(updates["snooze_options"])
     pool = await get_pool()
     set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
     values = list(updates.values())

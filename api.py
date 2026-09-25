@@ -100,6 +100,7 @@ class ReminderIn(BaseModel):
     # Minutes EAST of UTC for the user's local timezone (JS: -getTimezoneOffset()).
     # Needed so "HH:MM" strings from the client are combined with the date in local time.
     tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
+    snooze_options: Optional[list[int]] = Field(default=[15, 60, 1440])
 
 
 class ReminderUpdate(BaseModel):
@@ -116,6 +117,7 @@ class ReminderUpdate(BaseModel):
     is_active: Optional[bool] = None
     daily_times: Optional[list[str]] = None
     tz_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
+    snooze_options: Optional[list[int]] = Field(default=[15, 60, 1440])
 
 
 class TestSendIn(BaseModel):
@@ -264,6 +266,7 @@ async def create_reminder(payload: ReminderIn, x_telegram_init_data: Optional[st
         tracker_enabled=payload.tracker_enabled, recurrence=payload.recurrence,
         end_date=payload.end_date, use_message_pool=payload.use_message_pool,
         daily_times=payload.daily_times, tz_offset_minutes=payload.tz_offset_minutes or 0,
+        snooze_options=payload.snooze_options,
     )
     return await db.get_reminder(new_id)
 

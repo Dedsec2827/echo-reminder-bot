@@ -116,6 +116,14 @@
   .field-row .field-title { font-size: 16px; }
   .field-row .field-sub { font-size: 13px; color: var(--hint); margin-top: 1px; }
 
+  /* Snooze custom intervals */
+  .snooze-options-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px 14px; border-bottom: 0.5px solid var(--divider); }
+  .snooze-options-row .snooze-option-field { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .snooze-options-row input[type="number"] { width: 100%; text-align: center; border: none; outline: none; background: var(--secondary-bg); border-radius: 8px; padding: 8px 6px; color: var(--text); font-size: 15px; font-family: inherit; -moz-appearance: textfield; }
+  .snooze-options-row input[type="number"]::-webkit-outer-spin-button,
+  .snooze-options-row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .snooze-options-row label { margin-top: 4px; font-size: 12px; color: var(--hint); }
+
   /* Segmented Control */
   .segmented { display: flex; gap: 3px; background: var(--secondary-bg); border-radius: 9px; padding: 3px; }
   .segment { flex: 1; padding: 7px 0; border: none; border-radius: 7px; background: transparent; color: var(--hint); font-size: 13px; font-weight: 600; }
@@ -274,6 +282,20 @@
         </div>
         <label class="switch"><input type="checkbox" id="f-snooze"><span class="slider"></span></label>
       </div>
+      <div class="snooze-options-row" id="snooze-options-row" style="display:none;">
+        <div class="snooze-option-field">
+          <input type="number" id="f-snooze-opt-1" placeholder="15" min="1" inputmode="numeric">
+          <label for="f-snooze-opt-1">Minutes</label>
+        </div>
+        <div class="snooze-option-field">
+          <input type="number" id="f-snooze-opt-2" placeholder="60" min="1" inputmode="numeric">
+          <label for="f-snooze-opt-2">Minutes</label>
+        </div>
+        <div class="snooze-option-field">
+          <input type="number" id="f-snooze-opt-3" placeholder="1440" min="1" inputmode="numeric">
+          <label for="f-snooze-opt-3">Minutes</label>
+        </div>
+      </div>
       <div class="field-row">
         <div>
           <div class="field-title" data-i18n="tracker_title">Tracker</div>
@@ -307,6 +329,7 @@
   if (isMobile && tg?.requestFullscreen) {
     tg.requestFullscreen();
   }
+  tg?.lockOrientation && tg.lockOrientation('portrait');
 
   const API = "/api";
   const initData = tg?.initData || "";
@@ -635,6 +658,10 @@
   const enddateHint = document.getElementById("enddate-hint");
   const fRoute = document.getElementById("f-route");
   const fSnooze = document.getElementById("f-snooze");
+  const snoozeOptionsRow = document.getElementById("snooze-options-row");
+  const fSnoozeOpt1 = document.getElementById("f-snooze-opt-1");
+  const fSnoozeOpt2 = document.getElementById("f-snooze-opt-2");
+  const fSnoozeOpt3 = document.getElementById("f-snooze-opt-3");
   const fTracker = document.getElementById("f-tracker");
   const trackerSub = document.getElementById("tracker-sub");
   const recurrenceControl = document.getElementById("f-recurrence");
@@ -767,7 +794,7 @@
   function addDailyTimeRow(value) {
     const row = document.createElement("div"); row.className = "daily-time-row";
     const input = document.createElement("input"); input.type = "time"; input.value = value || defaultTimeValue();
-    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" style=\"width: 14px; height: 14px;\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>";
     removeBtn.addEventListener("click", () => {
       // Every recurrence needs at least one time slot.
       if (dailyTimesList.children.length <= 1) return;
@@ -848,7 +875,7 @@
     mediaThumbnails.style.display = "flex"; mediaEmpty.style.display = "none";
     const thumb = document.createElement("div"); thumb.className = "thumb";
     const img = document.createElement("img"); img.src = mediaUrlToSrc(currentMediaUrl); img.alt = "Attached image"; img.loading = "lazy"; img.decoding = "async";
-    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "thumb-remove"; removeBtn.innerHTML = "&times;";
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "thumb-remove"; removeBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" style=\"width: 14px; height: 14px;\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>";
     removeBtn.addEventListener("click", clearMedia);
     thumb.appendChild(img); thumb.appendChild(removeBtn); mediaThumbnails.appendChild(thumb);
   }
@@ -946,7 +973,7 @@
     const row = document.createElement("div"); row.className = "pool-variant-row";
     const textarea = document.createElement("textarea"); textarea.rows = 1; textarea.placeholder = t("phrase_placeholder", { n: index + 1 }); textarea.value = value;
     textarea.addEventListener("input", syncPoolVariantsToText);
-    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "&times;";
+    const removeBtn = document.createElement("button"); removeBtn.type = "button"; removeBtn.className = "pool-variant-remove"; removeBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" style=\"width: 14px; height: 14px;\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>";
     removeBtn.addEventListener("click", () => { row.remove(); syncPoolVariantsToText(); markDirty(); });
     row.appendChild(textarea); row.appendChild(removeBtn); poolVariantsContainer.appendChild(row);
     return textarea;
@@ -972,18 +999,20 @@
   }
   fPool.addEventListener("change", () => { updatePoolUI(); markDirty(); });
 
+  function updateSnoozeOptionsUI() {
+    snoozeOptionsRow.style.display = fSnooze.checked ? "flex" : "none";
+  }
+  fSnooze.addEventListener("change", () => { updateSnoozeOptionsUI(); markDirty(); });
+
   function updateScheduleUI() {
     const isDaily = currentRecurrence === "daily";
     const isOnce = currentRecurrence === "none";
     const isRecurring = !isOnce;
-    // Multiple times only make sense for Daily and for a brand-new "Once" reminder (each time becomes
-    // its own one-off row on save). Everything else - including editing a saved single reminder,
-    // and Weekly/Yearly - has exactly one time.
-    const isOnceNew = isOnce && currentReminderId === null;
-    const multiTime = isDaily || isOnceNew;
+    // Multiple times are always available for Once and Daily (also while editing); Weekly/Yearly have one time.
+    const multiTime = isDaily || isOnce;
     fieldDatetime.style.display = isDaily ? "none" : "block";
     fieldDailyTimes.style.display = "block";
-    extraTimesHint.style.display = isOnceNew ? "block" : "none";
+    extraTimesHint.style.display = isOnce ? "block" : "none";
     if (dailyTimesLabel) dailyTimesLabel.textContent = t(multiTime ? "times_label" : "time_label");
     if (dailyTimesList.children.length === 0) renderDailyTimes([]);
     if (!multiTime) { while (dailyTimesList.children.length > 1) dailyTimesList.lastElementChild.remove(); }
@@ -1025,6 +1054,7 @@
     const slot = defaultSlot();
     fDate.value = toDateInputValue(slot); renderDailyTimes([toTimeValue(slot)]); fEndDate.value = "";
     fSnooze.checked = false; fTracker.checked = false; setRecurrenceControl("none");
+    fSnoozeOpt1.value = 15; fSnoozeOpt2.value = 60; fSnoozeOpt3.value = 1440; updateSnoozeOptionsUI();
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
       try { chatsCache = await fetchChats(); } catch (e) { console.error(e); tg?.showAlert(t("alert_couldnt_load_chats")); }
@@ -1044,6 +1074,9 @@
     renderDailyTimes(reminder.daily_times && reminder.daily_times.length ? reminder.daily_times : [toTimeValue(reminder.run_date)]);
     fEndDate.value = toDateInputValue(reminder.end_date);
     fSnooze.checked = !!reminder.snooze_enabled; fTracker.checked = !!reminder.tracker_enabled;
+    const snoozeOpts = reminder.snooze_options || [15, 60, 1440];
+    fSnoozeOpt1.value = snoozeOpts[0]; fSnoozeOpt2.value = snoozeOpts[1]; fSnoozeOpt3.value = snoozeOpts[2];
+    updateSnoozeOptionsUI();
     setRecurrenceControl(reminder.recurrence || "none");
     renderMediaThumbnails(); fMediaFile.value = "";
     if (chatsCache.length === 0) {
@@ -1088,12 +1121,18 @@
     }
     const isRecurring = currentRecurrence !== "none";
     const endDateIso = isRecurring && fEndDate.value ? new Date(`${fEndDate.value}T23:59:59`).toISOString() : null;
+    const snoozeOptionDefaults = [15, 60, 1440];
+    const snooze_options_payload = [fSnoozeOpt1, fSnoozeOpt2, fSnoozeOpt3].map((el, i) => {
+      const n = parseInt(el.value, 10);
+      return (Number.isNaN(n) || n < 1) ? snoozeOptionDefaults[i] : n;
+    });
     const payload = {
       chat_id: Number(fRoute.value), text: fText.value.trim(), run_date: runDateIso,
       media_url: currentMediaUrl || null, media_message_id: currentMediaMessageId || null,
       snooze_enabled: fSnooze.checked, tracker_enabled: fTracker.checked, recurrence: currentRecurrence,
       end_date: endDateIso, use_message_pool: fPool.checked, daily_times: dailyTimesPayload,
       tz_offset_minutes: -new Date(runDateIso).getTimezoneOffset(),
+      snooze_options: snooze_options_payload,
     };
     tg?.MainButton.showProgress();
     tg?.MainButton.setText(t("saving_label"));
@@ -1146,7 +1185,7 @@
 
   fText.addEventListener("input", markDirty);
   poolVariantsContainer.addEventListener("input", markDirty);
-  [fDate, fEndDate, fRoute, fSnooze, fTracker].forEach((el) => el.addEventListener("change", markDirty));
+  [fDate, fEndDate, fRoute, fSnooze, fTracker, fSnoozeOpt1, fSnoozeOpt2, fSnoozeOpt3].forEach((el) => el.addEventListener("change", markDirty));
 
   async function handleCancelEdit() {
     // Leaving the edit screen without saving: any photo uploaded/replaced in this
