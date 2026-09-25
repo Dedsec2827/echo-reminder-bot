@@ -852,6 +852,15 @@
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0, 0);
   }
 
+  function updateDailyTimesRemoveButtons() {
+    const rows = dailyTimesList.querySelectorAll(".daily-time-row");
+    const show = rows.length > 1;
+    rows.forEach((row) => {
+      const btn = row.querySelector(".pool-variant-remove");
+      if (btn) btn.style.display = show ? "flex" : "none";
+    });
+  }
+
   function addDailyTimeRow(value) {
     const row = document.createElement("div"); row.className = "daily-time-row";
     const input = document.createElement("input"); input.type = "time"; input.value = value || defaultTimeValue();
@@ -860,8 +869,10 @@
       // Every recurrence needs at least one time slot.
       if (dailyTimesList.children.length <= 1) return;
       row.remove(); markDirty();
+      updateDailyTimesRemoveButtons();
     });
     row.appendChild(input); row.appendChild(removeBtn); dailyTimesList.appendChild(row);
+    updateDailyTimesRemoveButtons();
     return input;
   }
 
@@ -869,6 +880,7 @@
     dailyTimesList.innerHTML = "";
     const list = (times && times.length) ? times : [defaultTimeValue()];
     list.forEach((timeStr) => addDailyTimeRow(timeStr));
+    updateDailyTimesRemoveButtons();
   }
 
   function getDailyTimes() {
@@ -920,7 +932,41 @@
         : `📷 ${t("photo_only_label")}`;
       const row = document.createElement("div"); row.className = "list-row"; row.dataset.id = r.id;
       row.innerHTML = `<div class="row-icon">${ICONS.bell}</div><div class="row-body"><div class="row-title">${escapeHtml(displayText)}</div><div class="row-subtitle">${formatDateTime(r.run_date)} &middot; ${escapeHtml(routeLabel)}</div>${badges.length ? `<div class="row-badges">${badges.join("")}</div>` : ""}</div><div class="row-chevron">${ICONS.chevron}</div>`;
-      row.addEventListener("click", () => openEditScreen(r));
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isSwiping = false;
+
+      row.addEventListener('touchstart', e => {
+          touchStartX = e.changedTouches[0].screenX;
+          touchStartY = e.changedTouches[0].screenY;
+          isSwiping = false;
+      }, {passive: true});
+
+      row.addEventListener('touchmove', e => {
+          const deltaX = Math.abs(e.changedTouches[0].screenX - touchStartX);
+          const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
+          if (deltaX > 15 || deltaY > 15) isSwiping = true;
+      }, {passive: true});
+
+      row.addEventListener('touchend', e => {
+          const touchEndX = e.changedTouches[0].screenX;
+          if (isSwiping && touchStartX - touchEndX > 60) {
+              tg?.showConfirm(t("confirm_delete"), async (confirmed) => {
+                  if (!confirmed) return;
+                  const rRow = listContainer.querySelector(`[data-id="${r.id}"]`);
+                  if (rRow) rRow.remove();
+                  if (!listContainer.children.length) emptyState.style.display = "block";
+                  try { await deleteReminderApi(r.id); }
+                  catch (err) { console.error(err); tg?.showAlert(t("alert_couldnt_delete")); }
+                  finally { renderList(); }
+              });
+          }
+      });
+
+      row.addEventListener("click", (e) => {
+          if (isSwiping) return; // Prevent click from firing if it was a swipe
+          openEditScreen(r);
+      });
       listContainer.appendChild(row);
     });
   }
@@ -1077,6 +1123,7 @@
     if (dailyTimesLabel) dailyTimesLabel.textContent = t(multiTime ? "times_label" : "time_label");
     if (dailyTimesList.children.length === 0) renderDailyTimes([]);
     if (!multiTime) { while (dailyTimesList.children.length > 1) dailyTimesList.lastElementChild.remove(); }
+    updateDailyTimesRemoveButtons();
     btnAddTime.style.display = multiTime ? "" : "none";
     fieldEndDate.style.display = isRecurring ? "block" : "none";
     enddateHint.style.display = isRecurring ? "block" : "none";
@@ -1171,7 +1218,25 @@
     dangerZone.style.display = "block"; trackerSub.textContent = reminder.streak_count > 0 ? t("tracker_sub_streak", { n: reminder.streak_count }) : t("tracker_sub_default");
     fText.value = reminder.text || ""; fPool.checked = !!reminder.use_message_pool; updatePoolUI();
     fDate.value = toDateInputValue(reminder.run_date);
-    renderDailyTimes(reminder.daily_times && reminder.daily_times.length ? reminder.daily_times : [toTimeValue(reminder.run_date)]);
+    let times = reminder.daily_times && reminder.daily_times.length ? [...reminder.daily_times] : [];
+    const runTime = toTimeValue(reminder.run_date);
+    if (times.length > 0 && !times.includes(runTime)) {
+      let closestIdx = 0;
+      let minDiff = Infinity;
+      const rDate = new Date(reminder.run_date);
+      times.forEach((t, i) => {
+        const [th, tm] = t.split(':').map(Number);
+        const tDate = new Date(rDate);
+        tDate.setHours(th, tm, 0, 0);
+        const diff = Math.abs(rDate - tDate);
+        if (diff < minDiff) { minDiff = diff; closestIdx = i; }
+      });
+      times[closestIdx] = runTime;
+      times.sort();
+    } else if (times.length === 0) {
+      times = [runTime];
+    }
+    renderDailyTimes(times);
     fEndDate.value = toDateInputValue(reminder.end_date);
     fSnooze.checked = !!reminder.snooze_enabled; fTracker.checked = !!reminder.tracker_enabled;
     const snoozeOpts = reminder.snooze_options || [15, 60, 1440];
