@@ -385,10 +385,17 @@ async def delete_reminder(reminder_id: int) -> None:
 async def get_due_reminders() -> list[dict]:
     # Filtering by run_date in SQL (instead of fetching every active reminder and
     # filtering in Python) keeps each poll cheap as the table grows.
+    #
+    # Casting both sides to timestamptz (instead of comparing run_date <= $1 as raw TEXT)
+    # is critical: JS-generated ISO strings end in "Z" while Python's isoformat() ends in
+    # "+00:00". As TEXT, "Z" (0x5A) sorts strictly greater than "+" (0x2B), so a JS-created
+    # run_date would never satisfy run_date <= now_iso and the reminder would silently never
+    # fire. Casting to timestamptz compares them as actual points in time instead.
     now_iso = utcnow().isoformat()
     pool = await get_pool()
     rows = await pool.fetch(
-        "SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0 AND run_date <= $1",
+        "SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0 "
+        "AND CAST(run_date AS timestamptz) <= CAST($1 AS timestamptz)",
         now_iso,
     )
     return [_reminder_row_to_dict(r) for r in rows]
@@ -434,7 +441,10 @@ def compute_next_run_date(
             continue
     parsed_times.sort()
 
-    if parsed_times and recurrence == "none":
+    if recurrence == "none":
+        if not parsed_times:
+            # A plain one-shot reminder has no "next" occurrence - nothing to compute.
+            return None
         # "none": multi-time single-day "Once" reminder - all remaining slots share
         # the same local date, so if that date is excluded none of them can fire.
         base_local = parse_iso_utc(current_run_date_iso) + offset
@@ -449,16 +459,18 @@ def compute_next_run_date(
         raise ValueError(f"Непідтримуваний тип повтору: {recurrence!r}")
 
     def _advance_day(day_local: datetime) -> datetime:
-        """Jump a *local* day marker forward by one recurrence interval (used to pick the
-        next candidate day once every slot on the current candidate day has passed)."""
+        """Jump a *local* day marker forward by one day (used to pick the next candidate
+        day once every slot on the current candidate day has passed). Both "daily" and
+        "weekly" step a single day at a time - stepping "weekly" by 7 days would skip
+        right over any *other* selected weekday (e.g. Mon & Wed), since it's
+        exclude_weekdays - not this step size - that actually restricts which days are
+        valid candidates."""
         if recurrence == "yearly":
             try:
                 return day_local.replace(year=day_local.year + 1)
             except ValueError:
                 return day_local.replace(year=day_local.year + 1, day=28)
-        if recurrence == "weekly":
-            return day_local + timedelta(days=7)
-        return day_local + timedelta(days=1)  # daily
+        return day_local + timedelta(days=1)  # daily and weekly
 
     if parsed_times:
         # Multiple times per local day, for daily/weekly/yearly alike: iterate through the
@@ -467,11 +479,13 @@ def compute_next_run_date(
         # _advance_day to jump to the next valid candidate day. 366-iteration failsafe against
         # infinite loops (e.g. every remaining candidate excluded).
         #
-        # "daily" anchors the search on "now" so a stale current_run_date (e.g. after bot
-        # downtime) doesn't burn iterations catching up. "weekly"/"yearly" anchor on
-        # current_run_date's local day instead, so the target weekday / day-of-year is
-        # preserved, then step forward by the interval from there.
-        day_local = now_local if recurrence == "daily" else parse_iso_utc(current_run_date_iso) + offset
+        # "daily" and "weekly" anchor the search on "now" so a stale current_run_date (e.g.
+        # after bot downtime, or a weekly reminder that fell behind) doesn't burn hundreds of
+        # 1-day iterations catching back up - exclude_weekdays alone determines which days
+        # are valid, so there's no single "target weekday" to preserve from current_run_date.
+        # "yearly" still anchors on current_run_date's local day, so the target day-of-year
+        # is preserved, then steps forward a day at a time from there.
+        day_local = now_local if recurrence in ("daily", "weekly") else parse_iso_utc(current_run_date_iso) + offset
         iterations = 0
         while iterations < 366:
             for hh, mm in parsed_times:
@@ -492,7 +506,9 @@ def compute_next_run_date(
                 return dt.replace(year=dt.year + 1)
             except ValueError:
                 return dt.replace(year=dt.year + 1, day=28)
-        return dt + RECURRENCE_INTERVALS[recurrence]
+        # "daily" and "weekly" both step a single day at a time now - exclude_weekdays
+        # (not the step size) determines which days are actually valid.
+        return dt + timedelta(days=1)
 
     # Advance candidate-by-candidate (366-iteration failsafe) until one lands after
     # "now" on a non-excluded local date.
