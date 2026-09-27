@@ -396,12 +396,12 @@ async def get_due_reminders() -> list[dict]:
     # "+00:00". As TEXT, "Z" (0x5A) sorts strictly greater than "+" (0x2B), so a JS-created
     # run_date would never satisfy run_date <= now_iso and the reminder would silently never
     # fire. Casting to timestamptz compares them as actual points in time instead.
-    now_iso = utcnow().isoformat()
+    now = utcnow()
     pool = await get_pool()
     rows = await pool.fetch(
         "SELECT * FROM reminders WHERE is_active = 1 AND is_sent = 0 "
         "AND CAST(run_date AS timestamptz) <= CAST($1 AS timestamptz)",
-        now_iso,
+        now,
     )
     return [_reminder_row_to_dict(r) for r in rows]
 
