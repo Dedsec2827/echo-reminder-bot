@@ -407,7 +407,48 @@ async def get_due_reminders() -> list[dict]:
         "AND CAST(run_date AS timestamptz) <= CAST($1 AS timestamptz)",
         now,
     )
-    return [_reminder_row_to_dict(r) for r in rows]
+    due: list[dict] = []
+    for row in rows:
+        reminder = _reminder_row_to_dict(row)
+        # Страховка: "пропуск днів тижня / дат" застосовувався лише до НАСТУПНИХ спрацювань
+        # (compute_next_run_date), а перший run_date, виставлений при створенні/редагуванні,
+        # міг потрапити саме на пропущений день - і повідомлення все одно приходило.
+        # Тому будь-яке повторюване нагадування, що припало на пропущений день, тут не
+        # відправляється, а одразу переноситься на наступний дозволений момент.
+        if reminder["recurrence"] in RECURRING_TYPES and is_run_date_excluded(
+            reminder["run_date"], reminder["tz_offset_minutes"],
+            reminder["exclude_weekdays"], reminder["exclude_dates"],
+        ):
+            await _skip_excluded_occurrence(reminder)
+            continue
+        due.append(reminder)
+    return due
+
+
+def is_run_date_excluded(
+    run_date_iso: str, tz_offset_minutes: int,
+    exclude_weekdays: Optional[list[int]], exclude_dates: Optional[list[str]],
+) -> bool:
+    """True, якщо run_date припадає на пропущений локальний день тижня (0=Пн..6=Нд) або дату."""
+    local = parse_iso_utc(run_date_iso) + timedelta(minutes=tz_offset_minutes or 0)
+    if local.weekday() in (exclude_weekdays or []):
+        return True
+    return local.date().isoformat() in (exclude_dates or [])
+
+
+async def _skip_excluded_occurrence(reminder: dict) -> None:
+    next_run = compute_next_run_date(
+        reminder["run_date"], reminder["recurrence"], reminder["daily_times"],
+        reminder["tz_offset_minutes"], reminder["exclude_weekdays"], reminder["exclude_dates"],
+    )
+    end_date = reminder.get("end_date")
+    if next_run and end_date and parse_iso_utc(next_run) > parse_iso_utc(end_date):
+        next_run = None
+    if next_run:
+        await reschedule_recurring_reminder(reminder["id"], next_run)
+    else:
+        # Немає жодного дозволеного наступного дня (усі пропущені або минув end_date).
+        await mark_reminder_sent(reminder["id"], keep_active=False)
 
 
 async def mark_reminder_sent(reminder_id: int, keep_active: bool) -> None:

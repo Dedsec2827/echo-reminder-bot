@@ -900,32 +900,48 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
-  // Given a list of "HH:MM" times, returns the next one still ahead today, or the
-  // earliest time tomorrow if every slot for today has already passed.
-  function nextDailyRunDate(times) {
-    const list = [...times].sort(), now = new Date();
-    for (const timeStr of list) {
-      const [hh, mm] = timeStr.split(":").map(Number);
-      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-      if (candidate > now) return candidate;
-    }
-    const [hh, mm] = list[0].split(":").map(Number);
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0, 0);
+  // True, якщо цей локальний день пропущено: або його день тижня є в "Пропускати дні
+  // тижня" (0=Пн..6=Нд), або точну дату додано в "Пропускати конкретні дати".
+  function isExcludedDay(day, useWeekdays) {
+    if (useWeekdays && excludeWeekdays.includes(weekdayIndexFromDate(day))) return true;
+    return excludeDates.includes(toDateInputValue(day));
   }
 
   // Converts a JS Date's getDay() (0=Sun..6=Sat) to this app's weekday convention
   // (0=Mon..6=Sun), matching the data-value on every weekday segmented button.
   function weekdayIndexFromDate(date) { return (date.getDay() + 6) % 7; }
 
+  // Given a list of "HH:MM" times, returns the next one still ahead - today if a slot is
+  // left, otherwise the next day - SKIPPING days the user excluded (weekdays and dates).
+  // Раніше пропуски тут не враховувались, тому перше спрацювання могло припасти на
+  // пропущений день (напр. сьогодні), і повідомлення все одно приходило.
+  function nextDailyRunDate(times) {
+    const list = [...times].sort(), now = new Date();
+    for (let offset = 0; offset < 366; offset++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      if (isExcludedDay(day, true)) continue;
+      for (const timeStr of list) {
+        const [hh, mm] = timeStr.split(":").map(Number);
+        const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm, 0, 0);
+        if (candidate > now) return candidate;
+      }
+    }
+    // Усі дні пропущено - лишаємо стару поведінку (завтра); сервер такі нагадування не відправить.
+    const [hh, mm] = list[0].split(":").map(Number);
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0, 0);
+  }
+
   // Given the (0=Mon..6=Sun) weekdays a Weekly reminder should fire on and its list of
   // "HH:MM" times, finds the next upcoming local Date matching one of those weekdays -
-  // today included, if a later time slot on today's weekday hasn't passed yet.
+  // today included, if a later time slot on today's weekday hasn't passed yet. Пропущені
+  // конкретні дати теж обходяться (пропуск днів тижня для Weekly уже закладено у weeklyDays).
   function nextWeeklyRunDate(days, times) {
     const sortedTimes = [...times].sort();
     const now = new Date();
-    for (let offset = 0; offset < 8; offset++) {
+    for (let offset = 0; offset < 400; offset++) {
       const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
       if (!days.includes(weekdayIndexFromDate(day))) continue;
+      if (isExcludedDay(day, false)) continue;
       for (const timeStr of sortedTimes) {
         const [hh, mm] = timeStr.split(":").map(Number);
         const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm, 0, 0);
