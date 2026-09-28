@@ -154,6 +154,10 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         "snooze_options": "ALTER TABLE reminders ADD COLUMN snooze_options TEXT DEFAULT '[15, 60, 1440]'",
         "exclude_weekdays": "ALTER TABLE reminders ADD COLUMN exclude_weekdays TEXT",
         "exclude_dates": "ALTER TABLE reminders ADD COLUMN exclude_dates TEXT",
+        # Заповнюється лише для одноразової "відкладеної копії" (див. snooze_reminder):
+        # вказує на нотатку, від якої відкладено. SET NULL, а не CASCADE - щоб видалення
+        # оригіналу не знищило відкладене повідомлення, яке ще не встигло прийти.
+        "snoozed_from": "ALTER TABLE reminders ADD COLUMN snoozed_from INTEGER REFERENCES reminders (id) ON DELETE SET NULL",
     }
     for column, ddl in migrations.items():
         if column not in columns:
@@ -538,12 +542,69 @@ async def reschedule_recurring_reminder(reminder_id: int, next_run_date: str) ->
 
 
 async def snooze_reminder(reminder_id: int, minutes: int = 15) -> str:
+    """Відкладає повідомлення на `minutes` хвилин, повертає новий run_date (ISO, UTC).
+
+    Раніше тут завжди перезаписувався run_date самої нотатки. Але коли повідомлення вже
+    надійшло, планувальник ВЖЕ виставив у run_date наступне спрацювання (наступний час зі
+    списку, наступний день/тиждень). Перезапис затирав його:
+      * два часи (10:25 і 10:27), відкладення на 2 хв -> run_date = 10:27, і в 10:27
+        приходило одне повідомлення замість двох;
+      * для daily/weekly розклад "з'їжджав" на відкладений час назавжди.
+
+    Тепер:
+      * є наступне спрацювання (is_sent = 0) -> нотатку НЕ чіпаємо, відкладене
+        повідомлення живе окремим одноразовим рядком (snoozed_from = id нотатки).
+        Повторне відкладення того самого повідомлення пересуває цей рядок, а не плодить нові;
+      * наступного спрацювання немає (is_sent = 1) -> як і раніше, зсуваємо run_date
+        на місці. Для "Once" із часами список часів звужується до відкладеного часу,
+        щоб екран редагування показував актуальний час, а не старі.
+    """
     new_run_date = (utcnow() + timedelta(minutes=minutes)).isoformat()
     pool = await get_pool()
-    await pool.execute(
-        "UPDATE reminders SET run_date = $1, is_sent = 0, is_active = 1 WHERE id = $2",
-        new_run_date, reminder_id,
-    )
+    original = await get_reminder(reminder_id)
+    if original is None:
+        return new_run_date
+
+    if not original["is_sent"]:
+        pending_id = await pool.fetchval(
+            "SELECT id FROM reminders WHERE snoozed_from = $1 AND is_sent = 0 AND is_active = 1 "
+            "ORDER BY id DESC LIMIT 1",
+            reminder_id,
+        )
+        if pending_id is not None:
+            await pool.execute(
+                "UPDATE reminders SET run_date = $1 WHERE id = $2", new_run_date, pending_id
+            )
+            return new_run_date
+        new_id = await create_reminder(
+            user_id=original["user_id"], chat_id=original["chat_id"], text=original["text"],
+            run_date=new_run_date, media_url=original.get("media_url"),
+            media_message_id=original.get("media_message_id"),
+            snooze_enabled=bool(original.get("snooze_enabled")),
+            tracker_enabled=bool(original.get("tracker_enabled")),
+            recurrence="none", use_message_pool=bool(original.get("use_message_pool")),
+            tz_offset_minutes=original.get("tz_offset_minutes") or 0,
+            snooze_options=original.get("snooze_options"),
+        )
+        await pool.execute(
+            "UPDATE reminders SET snoozed_from = $1, streak_count = $2 WHERE id = $3",
+            reminder_id, original.get("streak_count") or 0, new_id,
+        )
+        return new_run_date
+
+    if original["recurrence"] == "none" and original["daily_times"]:
+        offset = timedelta(minutes=original.get("tz_offset_minutes") or 0)
+        local_slot = (parse_iso_utc(new_run_date) + offset).strftime("%H:%M")
+        await pool.execute(
+            "UPDATE reminders SET run_date = $1, daily_times = $2, is_sent = 0, is_active = 1 "
+            "WHERE id = $3",
+            new_run_date, serialize_daily_times([local_slot]), reminder_id,
+        )
+    else:
+        await pool.execute(
+            "UPDATE reminders SET run_date = $1, is_sent = 0, is_active = 1 WHERE id = $2",
+            new_run_date, reminder_id,
+        )
     return new_run_date
 
 

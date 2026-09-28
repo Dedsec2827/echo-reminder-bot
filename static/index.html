@@ -509,6 +509,7 @@
       until_date: "until {date}",
       pool_badge: "Pool · {n}",
       snooze_badge: "Snooze",
+      snoozed_once_badge: "Snoozed",
       tracked_badge: "Tracked",
       streak_badge: "Streak {n}",
       photo_badge: "Photo",
@@ -597,6 +598,7 @@
       until_date: "до {date}",
       pool_badge: "Пул · {n}",
       snooze_badge: "Відкладення",
+      snoozed_once_badge: "Відкладено",
       tracked_badge: "Відстежується",
       streak_badge: "Стрік {n}",
       photo_badge: "Фото",
@@ -685,6 +687,7 @@
       until_date: "մինչև {date}",
       pool_badge: "Խումբ · {n}",
       snooze_badge: "Հետաձգում",
+      snoozed_once_badge: "Հետաձգված",
       tracked_badge: "Հետևվում է",
       streak_badge: "Շարք {n}",
       photo_badge: "Լուսանկար",
@@ -1004,7 +1007,8 @@
         badges.push(`<span class="badge">${ICONS.repeat}${escapeHtml(recurrenceText)}</span>`);
       }
       if (r.use_message_pool) { const count = poolVariants(r.text).length; badges.push(`<span class="badge">${ICONS.shuffle}${escapeHtml(t("pool_badge", { n: count }))}</span>`); }
-      if (r.snooze_enabled) badges.push(`<span class="badge">${ICONS.clock}${t("snooze_badge")}</span>`);
+      if (r.snoozed_from) badges.push(`<span class="badge">${ICONS.clock}${t("snoozed_once_badge")}</span>`);
+      else if (r.snooze_enabled) badges.push(`<span class="badge">${ICONS.clock}${t("snooze_badge")}</span>`);
       if (r.tracker_enabled) badges.push(`<span class="badge">${ICONS.flame}${escapeHtml(r.streak_count > 0 ? t("streak_badge", { n: r.streak_count }) : t("tracked_badge"))}</span>`);
       if (r.media_url) badges.push(`<span class="badge">${ICONS.image}${t("photo_badge")}</span>`);
       const displayText = r.text
@@ -1390,20 +1394,13 @@
     fDate.value = toDateInputValue(reminder.run_date);
     let times = reminder.daily_times && reminder.daily_times.length ? [...reminder.daily_times] : [];
     const runTime = toTimeValue(reminder.run_date);
-    if (times.length > 0 && !times.includes(runTime)) {
-      let closestIdx = 0;
-      let minDiff = Infinity;
-      const rDate = new Date(reminder.run_date);
-      times.forEach((t, i) => {
-        const [th, tm] = t.split(':').map(Number);
-        const tDate = new Date(rDate);
-        tDate.setHours(th, tm, 0, 0);
-        const diff = Math.abs(rDate - tDate);
-        if (diff < minDiff) { minDiff = diff; closestIdx = i; }
-      });
-      times[closestIdx] = runTime;
-      times.sort();
-    } else if (times.length === 0) {
+    if (times.length === 0) {
+      times = [runTime];
+    } else if (times.length === 1 && (reminder.recurrence || "none") === "none" && times[0] !== runTime) {
+      // Одноразова нотатка з одним часом, відкладена "на місці": показуємо час, о якому
+      // вона справді спрацює. Для розкладів (кілька часів, daily/weekly/yearly) час зі
+      // списку НЕ підміняємо: run_date там - лише найближче спрацювання, і підміна
+      // мовчки переписала б розклад при наступному збереженні.
       times = [runTime];
     }
     renderDailyTimes(times);
